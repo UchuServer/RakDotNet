@@ -12,7 +12,7 @@ namespace RakDotNet
         private static extern IntPtr InitializeBitStream2(uint initialBytesToAllocate);
 
         [DllImport("RakDotNetNative")]
-        private static extern IntPtr InitializeBitStream3(byte[] data, uint length, bool copyData);
+        private static extern IntPtr InitializeBitStream3(IntPtr data, uint length, bool copyData);
 
         [DllImport("RakDotNetNative")]
         private static extern void DisposeBitStream(IntPtr bitStream);
@@ -85,9 +85,15 @@ namespace RakDotNet
 
         public BitStream(byte[] data, uint length, bool copyData)
         {
-            ptr = InitializeBitStream3(data, length, copyData);
+            var p = Marshal.AllocHGlobal(Marshal.SizeOf<byte>() * data.Length);
+
+            Marshal.Copy(data, 0, p, data.Length);
+
+            ptr = InitializeBitStream3(p, length, copyData);
+
+            Marshal.FreeHGlobal(p);
         }
-        
+
         ~BitStream()
         {
             Dispose();
