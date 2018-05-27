@@ -13,7 +13,7 @@ using namespace RakNet;
 //DataStructures::MemoryPool<RakString::SharedString> RakString::pool;
 unsigned int RakString::nPos=(unsigned int) -1;
 static SimpleMutex poolMutex;
-RakString::SharedString RakString::emptyString={0,0,0,"",""};
+RakString::SharedString RakString::emptyString={0,0,0,(char*)"",""};
 //RakString::SharedString *RakString::sharedStringFreeList=0;
 //unsigned int RakString::sharedStringFreeListAllocationCount=0;
 DataStructures::List<RakString::SharedString*> RakString::freeList;
