@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 using System.Runtime.InteropServices;
 
 namespace RakDotNet
@@ -381,6 +382,16 @@ namespace RakDotNet
         {
             BitStreamWriteBitCompressed(ptr, val);
         }
+
+        #endregion
+
+        #region Serializables
+
+        public void WriteSerializable(Serializable serializable)
+            => serializable.Serialize(this);
+
+        public T ReadSerializable<T>(BitStream stream) where T : Serializable 
+            => (T)typeof(T).GetMethod("Deserialize").Invoke(null, new object[] { stream });
 
         #endregion
     }
