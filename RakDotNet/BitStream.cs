@@ -5,6 +5,8 @@ namespace RakDotNet
 {
     public class BitStream : IDisposable
     {
+        #region Native Destructors/Constructors
+
         [DllImport("RakDotNetNative")]
         private static extern IntPtr InitializeBitStream1();
 
@@ -14,64 +16,138 @@ namespace RakDotNet
         [DllImport("RakDotNetNative")]
         private static extern IntPtr InitializeBitStream3(IntPtr data, uint length, bool copyData);
 
+        #endregion
+
+        #region Native Reads
+
         [DllImport("RakDotNetNative")]
         private static extern void DisposeBitStream(IntPtr bitStream);
 
         [DllImport("RakDotNetNative")]
-        private static extern sbyte ReadInt8(IntPtr bitStream);
+        private static extern sbyte BitStreamReadInt8(IntPtr bitStream);
 
         [DllImport("RakDotNetNative")]
-        private static extern byte ReadUInt8(IntPtr bitStream);
+        private static extern byte BitStreamReadUInt8(IntPtr bitStream);
 
         [DllImport("RakDotNetNative")]
-        private static extern short ReadInt16(IntPtr bitStream);
+        private static extern short BitStreamReadInt16(IntPtr bitStream);
 
         [DllImport("RakDotNetNative")]
-        private static extern ushort ReadUInt16(IntPtr bitStream);
+        private static extern ushort BitStreamReadUInt16(IntPtr bitStream);
 
         [DllImport("RakDotNetNative")]
-        private static extern int ReadInt32(IntPtr bitStream);
+        private static extern int BitStreamReadInt32(IntPtr bitStream);
 
         [DllImport("RakDotNetNative")]
-        private static extern uint ReadUInt32(IntPtr bitStream);
+        private static extern uint BitStreamReadUInt32(IntPtr bitStream);
 
         [DllImport("RakDotNetNative")]
-        private static extern long ReadInt64(IntPtr bitStream);
+        private static extern long BitStreamReadInt64(IntPtr bitStream);
 
         [DllImport("RakDotNetNative")]
-        private static extern ulong ReadUInt64(IntPtr bitStream);
+        private static extern ulong BitStreamReadUInt64(IntPtr bitStream);
 
         [DllImport("RakDotNetNative")]
-        private static extern bool ReadBit(IntPtr bitStream);
+        private static extern bool BitStreamReadBit(IntPtr bitStream);
+
+        #endregion
+
+        #region Native Writes
 
         [DllImport("RakDotNetNative")]
-        private static extern void WriteInt8(IntPtr bitStream, sbyte val);
+        private static extern void BitStreamWriteInt8(IntPtr bitStream, sbyte val);
 
         [DllImport("RakDotNetNative")]
-        private static extern void WriteUInt8(IntPtr bitStream, byte val);
+        private static extern void BitStreamWriteUInt8(IntPtr bitStream, byte val);
 
         [DllImport("RakDotNetNative")]
-        private static extern void WriteInt16(IntPtr bitStream, short val);
+        private static extern void BitStreamWriteInt16(IntPtr bitStream, short val);
 
         [DllImport("RakDotNetNative")]
-        private static extern void WriteUInt16(IntPtr bitStream, ushort val);
+        private static extern void BitStreamWriteUInt16(IntPtr bitStream, ushort val);
 
         [DllImport("RakDotNetNative")]
-        private static extern void WriteInt32(IntPtr bitStream, int val);
+        private static extern void BitStreamWriteInt32(IntPtr bitStream, int val);
 
         [DllImport("RakDotNetNative")]
-        private static extern void WriteUInt32(IntPtr bitStream, uint val);
+        private static extern void BitStreamWriteUInt32(IntPtr bitStream, uint val);
 
         [DllImport("RakDotNetNative")]
-        private static extern void WriteInt64(IntPtr bitStream, long val);
+        private static extern void BitStreamWriteInt64(IntPtr bitStream, long val);
 
         [DllImport("RakDotNetNative")]
-        private static extern void WriteUInt64(IntPtr bitStream, ulong val);
+        private static extern void BitStreamWriteUInt64(IntPtr bitStream, ulong val);
 
         [DllImport("RakDotNetNative")]
-        private static extern void WriteBit(IntPtr bitStream, bool val);
-        
+        private static extern void BitStreamWriteBit(IntPtr bitStream, bool val);
+
+        #endregion
+
+        #region Native Compressed Reads
+
+        [DllImport("RakDotNetNative")]
+        private static extern sbyte BitStreamReadInt8Compressed(IntPtr bitStream);
+
+        [DllImport("RakDotNetNative")]
+        private static extern byte BitStreamReadUInt8Compressed(IntPtr bitStream);
+
+        [DllImport("RakDotNetNative")]
+        private static extern short BitStreamReadInt16Compressed(IntPtr bitStream);
+
+        [DllImport("RakDotNetNative")]
+        private static extern ushort BitStreamReadUInt16Compressed(IntPtr bitStream);
+
+        [DllImport("RakDotNetNative")]
+        private static extern int BitStreamReadInt32Compressed(IntPtr bitStream);
+
+        [DllImport("RakDotNetNative")]
+        private static extern uint BitStreamReadUInt32Compressed(IntPtr bitStream);
+
+        [DllImport("RakDotNetNative")]
+        private static extern long BitStreamReadInt64Compressed(IntPtr bitStream);
+
+        [DllImport("RakDotNetNative")]
+        private static extern ulong BitStreamReadUInt64Compressed(IntPtr bitStream);
+
+        [DllImport("RakDotNetNative")]
+        private static extern bool BitStreamReadBitCompressed(IntPtr bitStream);
+
+        #endregion
+
+        #region Native Compressed Writes
+
+        [DllImport("RakDotNetNative")]
+        private static extern void BitStreamWriteInt8Compressed(IntPtr bitStream, sbyte val);
+
+        [DllImport("RakDotNetNative")]
+        private static extern void BitStreamWriteUInt8Compressed(IntPtr bitStream, byte val);
+
+        [DllImport("RakDotNetNative")]
+        private static extern void BitStreamWriteInt16Compressed(IntPtr bitStream, short val);
+
+        [DllImport("RakDotNetNative")]
+        private static extern void BitStreamWriteUInt16Compressed(IntPtr bitStream, ushort val);
+
+        [DllImport("RakDotNetNative")]
+        private static extern void BitStreamWriteInt32Compressed(IntPtr bitStream, int val);
+
+        [DllImport("RakDotNetNative")]
+        private static extern void BitStreamWriteUInt32Compressed(IntPtr bitStream, uint val);
+
+        [DllImport("RakDotNetNative")]
+        private static extern void BitStreamWriteInt64Compressed(IntPtr bitStream, long val);
+
+        [DllImport("RakDotNetNative")]
+        private static extern void BitStreamWriteUInt64Compressed(IntPtr bitStream, ulong val);
+
+        [DllImport("RakDotNetNative")]
+        private static extern void BitStreamWriteBitCompressed(IntPtr bitStream, bool val);
+
+        #endregion
+
         private IntPtr ptr;
+
+        #region Destructors/Constructors
 
         public BitStream()
         {
@@ -105,94 +181,202 @@ namespace RakDotNet
             ptr = IntPtr.Zero;
         }
 
+        #endregion
+
+        #region Reads
+
         public sbyte ReadInt8()
         {
-            return ReadInt8(ptr);
+            return BitStreamReadInt8(ptr);
         }
 
         public byte ReadUInt8()
         {
-            return ReadUInt8(ptr);
+            return BitStreamReadUInt8(ptr);
         }
 
         public short ReadInt16()
         {
-            return ReadInt16(ptr);
+            return BitStreamReadInt16(ptr);
         }
 
         public ushort ReadUInt16()
         {
-            return ReadUInt16(ptr);
+            return BitStreamReadUInt16(ptr);
         }
 
         public int ReadInt32()
         {
-            return ReadInt32(ptr);
+            return BitStreamReadInt32(ptr);
         }
 
         public uint ReadUInt32()
         {
-            return ReadUInt32(ptr);
+            return BitStreamReadUInt32(ptr);
         }
 
         public long ReadInt64()
         {
-            return ReadInt64(ptr);
+            return BitStreamReadInt64(ptr);
         }
 
         public ulong ReadUInt64()
         {
-            return ReadUInt64(ptr);
+            return BitStreamReadUInt64(ptr);
         }
 
         public bool ReadBit()
         {
-            return ReadBit(ptr);
+            return BitStreamReadBit(ptr);
         }
+
+        #endregion
+
+        #region Writes
 
         public void WriteInt8(sbyte val)
         {
-            WriteInt8(ptr, val);
+            BitStreamWriteInt8(ptr, val);
         }
 
-        public  void WriteUInt8(byte val)
+        public void WriteUInt8(byte val)
         {
-            WriteUInt8(ptr, val);
+            BitStreamWriteUInt8(ptr, val);
         }
 
         public void WriteInt16(short val)
         {
-            WriteInt16(ptr, val);
+            BitStreamWriteInt16(ptr, val);
         }
 
         public void WriteUInt16(ushort val)
         {
-            WriteUInt16(ptr,val);
+            BitStreamWriteUInt16(ptr,val);
         }
 
         public void WriteInt32(int val)
         {
-            WriteInt32(ptr, val);
+            BitStreamWriteInt32(ptr, val);
         }
 
         public void WriteUInt32(uint val)
         {
-            WriteUInt32(ptr, val);
+            BitStreamWriteUInt32(ptr, val);
         }
 
         public void WriteInt64(long val)
         {
-            WriteInt64(ptr, val);
+            BitStreamWriteInt64(ptr, val);
         }
 
         public void WriteUInt64(ulong val)
         {
-            WriteUInt64(ptr, val);
+            BitStreamWriteUInt64(ptr, val);
         }
 
         public void WriteBit(bool val)
         {
-            WriteBit(ptr, val);
+            BitStreamWriteBit(ptr, val);
         }
+
+        #endregion
+
+        #region Compressed Reads
+
+        public sbyte ReadInt8Compressed()
+        {
+            return BitStreamReadInt8Compressed(ptr);
+        }
+
+        public byte ReadUInt8Compressed()
+        {
+            return BitStreamReadUInt8Compressed(ptr);
+        }
+
+        public short ReadInt16Compressed()
+        {
+            return BitStreamReadInt16Compressed(ptr);
+        }
+
+        public ushort ReadUInt16Compressed()
+        {
+            return BitStreamReadUInt16Compressed(ptr);
+        }
+
+        public int ReadInt32Compressed()
+        {
+            return BitStreamReadInt32Compressed(ptr);
+        }
+
+        public uint ReadUInt32Compressed()
+        {
+            return BitStreamReadUInt32Compressed(ptr);
+        }
+
+        public long ReadInt64Compressed()
+        {
+            return BitStreamReadInt64Compressed(ptr);
+        }
+
+        public ulong ReadUInt64Compressed()
+        {
+            return BitStreamReadUInt64Compressed(ptr);
+        }
+
+        public bool ReadBitCompressed()
+        {
+            return BitStreamReadBitCompressed(ptr);
+        }
+
+        #endregion
+
+        #region Compressed Writes
+
+        public void WriteInt8Compressed(sbyte val)
+        {
+            BitStreamWriteInt8Compressed(ptr, val);
+        }
+
+        public void WriteUInt8Compressed(byte val)
+        {
+            BitStreamWriteUInt8Compressed(ptr, val);
+        }
+
+        public void WriteInt16Compressed(short val)
+        {
+            BitStreamWriteInt16Compressed(ptr, val);
+        }
+
+        public void WriteUInt16Compressed(ushort val)
+        {
+            BitStreamWriteUInt16Compressed(ptr,val);
+        }
+
+        public void WriteInt32Compressed(int val)
+        {
+            BitStreamWriteInt32Compressed(ptr, val);
+        }
+
+        public void WriteUInt32Compressed(uint val)
+        {
+            BitStreamWriteUInt32Compressed(ptr, val);
+        }
+
+        public void WriteInt64Compressed(long val)
+        {
+            BitStreamWriteInt64Compressed(ptr, val);
+        }
+
+        public void WriteUInt64Compressed(ulong val)
+        {
+            BitStreamWriteUInt64Compressed(ptr, val);
+        }
+
+        public void WriteBitCompressed(bool val)
+        {
+            BitStreamWriteBitCompressed(ptr, val);
+        }
+
+        #endregion
     }
 }
