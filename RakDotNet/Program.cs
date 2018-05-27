@@ -8,7 +8,7 @@ namespace RakDotNet
         {
             var arr = new byte[8];
 
-            var bs = new BitStream(arr, (uint)arr.Length, false);
+            var bs = new BitStream(arr, (uint)arr.Length, true);
 
             bs.WriteInt8((sbyte)'h');
             bs.WriteUInt64(1L);
@@ -29,6 +29,7 @@ namespace RakDotNet
             Console.WriteLine(l);
             Console.WriteLine(b);
             Console.WriteLine(b2);
+            Console.ReadKey();
         }
     }
 }
