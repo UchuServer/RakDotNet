@@ -26,6 +26,19 @@ extern "C"
         }
     }
 
+    EXPORT unsigned int BitStreamGetNumberOfUnreadBits(BitStream* s)
+    {
+        return s->GetNumberOfUnreadBits();
+    }
+
+    EXPORT unsigned char* BitStreamReadBits(BitStream* s, unsigned int length, bool rightAlign = true)
+    {
+        unsigned char* o;
+        s->ReadBits(o, length, rightAlign);
+
+        return o;
+    }
+
     EXPORT signed char BitStreamReadInt8(BitStream* s)
     {
         signed char o;

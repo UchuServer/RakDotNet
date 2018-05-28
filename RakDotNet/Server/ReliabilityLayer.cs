@@ -15,6 +15,7 @@ namespace RakDotNet
         private TimeSpan srtt;
         private TimeSpan rttVar;
         private TimeSpan rto;
+        private TimeSpan remoteSysTime;
 
         public ReliabilityLayer(UdpClient sock, IPEndPoint address)
         {
@@ -28,14 +29,6 @@ namespace RakDotNet
         {
             var stream = new BitStream(data);
 
-            if (ParsePacketHeader(stream))
-                return null;
-
-            return ParsePackets(stream);
-        }
-
-        private bool ParsePacketHeader(BitStream stream)
-        {
             var hasAcks = stream.ReadBit();
 
             if (hasAcks)
@@ -59,14 +52,29 @@ namespace RakDotNet
 
                 rto = new TimeSpan(Math.Max(1, srtt.Milliseconds + 4 * rttVar.Milliseconds));
 
+                var acks = stream.ReadSerializable<RangeList>();
 
+                // TODO: implement resends
             }
 
-            return false;
+            if (stream.UnreadBitCount <= 0)
+                yield break;
+
+            if (stream.ReadBit())
+                remoteSysTime = new TimeSpan(stream.ReadUInt32());
+
+            foreach (var p in ParsePackets(stream))
+                yield return p;
         }
 
         private IEnumerable<byte[]> ParsePackets(BitStream stream)
         {
+            while (stream.UnreadBitCount > 0)
+            {
+                var msgNum = stream.ReadUInt32();
+                var reliability = stream.ReadBits(3);
+            }
+
             yield break;
         }
     }

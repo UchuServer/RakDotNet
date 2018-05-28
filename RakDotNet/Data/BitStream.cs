@@ -22,7 +22,17 @@ namespace RakDotNet
 
         #endregion
 
+        #region Native Other
+        
+        [DllImport("RakDotNetNative")]
+        private static extern uint BitStreamGetNumberOfUnreadBits(IntPtr bitStream);
+
+        #endregion
+
         #region Native Reads
+
+        [DllImport("RakDotNetNative")]
+        private static extern IntPtr BitStreamReadBits(IntPtr bitStream, uint length, bool alignRight);
 
         [DllImport("RakDotNetNative")]
         private static extern sbyte BitStreamReadInt8(IntPtr bitStream);
@@ -189,7 +199,22 @@ namespace RakDotNet
 
         #endregion
 
+        #region Other
+
+        public uint UnreadBitCount => BitStreamGetNumberOfUnreadBits(ptr);
+
+        #endregion
+
         #region Reads
+
+        public byte[] ReadBits(uint length, bool rightAlign = true)
+        {
+            var bytes = new byte[] { };
+
+            Marshal.Copy(BitStreamReadBits(ptr, length, rightAlign), bytes, 0, (int)length);
+
+            return bytes;
+        }
 
         public sbyte ReadInt8()
         {
@@ -390,8 +415,8 @@ namespace RakDotNet
         public void WriteSerializable(Serializable serializable)
             => serializable.Serialize(this);
 
-        public T ReadSerializable<T>(BitStream stream) where T : Serializable 
-            => (T)typeof(T).GetMethod("Deserialize").Invoke(null, new object[] { stream });
+        public T ReadSerializable<T>() where T : Serializable 
+            => (T)typeof(T).GetMethod("Deserialize").Invoke(null, new object[] { this });
 
         #endregion
     }
