@@ -144,15 +144,24 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="BitStream.h" />
+    <ClInclude Include="Defines.h" />
+    <ClInclude Include="RakNetTypes.h" />
+    <ClInclude Include="RakNetworkFactory.h" />
+    <ClInclude Include="RakPeerInterface.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BitStream.cpp" />
+    <ClCompile Include="RakNetTypes.cpp" />
+    <ClCompile Include="RakPeerInterface.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\RakNet\RakNet.vcxproj">
       <Project>{4bb5ce64-4a06-44bf-bb06-191499238d0f}</Project>
       <UseLibraryDependencyInputs>false</UseLibraryDependencyInputs>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="RakNetworkFactory.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

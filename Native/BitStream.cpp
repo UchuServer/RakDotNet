@@ -34,7 +34,7 @@ extern "C"
     EXPORT unsigned char* BitStreamReadBits(BitStream* s, unsigned int length, bool rightAlign = true)
     {
         unsigned char* o;
-        s->ReadBits(o, length, rightAlign);
+        s->ReadBits((unsigned char*) &o, length, rightAlign);
 
         return o;
     }

@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace RakDotNet
 {
@@ -6,30 +8,18 @@ namespace RakDotNet
     {
         public static void Main(string[] args)
         {
-            var arr = new byte[8];
+            var server = RakNetworkFactory.GetRakPeerInterface();
 
-            var bs = new BitStream(arr, (uint)arr.Length, true);
-
-            bs.WriteInt8((sbyte)'h');
-            bs.WriteUInt64(1L);
-            bs.WriteBit(true);
-            bs.WriteBitCompressed(true);
-
-            for (var i = 0; i < 8; i++)
+            server.Startup(8, 30, new SocketDescriptor(1001, "127.0.0.1"));
+            
+            while (true)
             {
-                bs.ReadUInt8();
+                Thread.Sleep(30);
+
+                var packet = server.Receive();
+
+                Console.WriteLine(packet.Data);
             }
-
-            var h = bs.ReadInt8();
-            var l = bs.ReadUInt64();
-            var b = bs.ReadBit();
-            var b2 = bs.ReadBitCompressed();
-
-            Console.WriteLine((char)h);
-            Console.WriteLine(l);
-            Console.WriteLine(b);
-            Console.WriteLine(b2);
-            Console.ReadKey();
         }
     }
 }
