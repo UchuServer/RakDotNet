@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace RakDotNet
+﻿namespace RakDotNet
 {
     public abstract class Serializable
     {
