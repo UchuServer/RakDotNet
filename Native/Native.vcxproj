@@ -111,7 +111,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
-      <Optimization>MaxSpeed</Optimization>
+      <Optimization>Disabled</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
@@ -148,11 +148,15 @@
     <ClInclude Include="RakNetTypes.h" />
     <ClInclude Include="RakNetworkFactory.h" />
     <ClInclude Include="RakPeerInterface.h" />
+    <ClInclude Include="Replica.h" />
+    <ClInclude Include="ReplicaManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BitStream.cpp" />
     <ClCompile Include="RakNetTypes.cpp" />
     <ClCompile Include="RakPeerInterface.cpp" />
+    <ClCompile Include="Replica.cpp" />
+    <ClCompile Include="ReplicaManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\RakNet\RakNet.vcxproj">

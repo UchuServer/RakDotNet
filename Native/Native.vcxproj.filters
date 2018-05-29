@@ -30,6 +30,12 @@
     <ClInclude Include="RakNetworkFactory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ReplicaManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Replica.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BitStream.cpp">
@@ -39,6 +45,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="RakPeerInterface.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ReplicaManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Replica.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

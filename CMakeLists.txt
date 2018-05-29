@@ -11,6 +11,8 @@ set(RAKDOTNET_SOURCES
     Native/RakNetTypes.cpp
     Native/RakNetworkFactory.cpp
     Native/RakPeerInterface.cpp
+    Native/Replica.cpp
+    Native/ReplicaManager.cpp
 )
 
 set(LIBS
