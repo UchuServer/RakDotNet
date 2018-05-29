@@ -18,6 +18,9 @@ namespace RakDotNet
 
                 var packet = server.Receive();
 
+                if (packet == null)
+                    continue;
+
                 Console.WriteLine(packet.Data);
             }
         }

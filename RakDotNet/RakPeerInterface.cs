@@ -67,20 +67,23 @@ namespace RakDotNet
 
             Marshal.Copy(data, 0, p, data.Length);
 
-            try
-            {
-                return RakPeerInterfaceSend1(ptr, p, length, priority, reliability, orderingChannel, systemAddress.ptr, broadcast);
-            }
-            finally
-            {
-                Marshal.FreeHGlobal(p);
-            }
+            var b = RakPeerInterfaceSend1(ptr, p, length, priority, reliability, orderingChannel, systemAddress.ptr, broadcast);
+
+            Marshal.FreeHGlobal(p);
+
+            return b;
         }
 
         public bool Send(BitStream stream, /* PacketPriority */ int priority, /* PacketReliability */ int reliability, sbyte orderingChannel, SystemAddress systemAddress, bool broadcast = false) 
             => RakPeerInterfaceSend2(ptr, stream.ptr, priority, reliability, orderingChannel, systemAddress.ptr, broadcast);
 
-        public Packet Receive() => new Packet(RakPeerInterfaceReceive(ptr), ptr);
+        public Packet Receive()
+        {
+            var p = RakPeerInterfaceReceive(ptr);
+
+            return p == IntPtr.Zero ? null : new Packet(p, ptr);
+        }
+
         public void DeallocatePacket(Packet packet) => RakPeerInterfaceDeallocatePacket(ptr, packet.ptr);
     }
 }

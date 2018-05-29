@@ -8,6 +8,9 @@ add_subdirectory("RakNet")
 
 set(RAKDOTNET_SOURCES
     Native/BitStream.cpp
+    Native/RakNetTypes.cpp
+    Native/RakNetworkFactory.cpp
+    Native/RakPeerInterface.cpp
 )
 
 set(LIBS
