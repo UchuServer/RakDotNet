@@ -42,6 +42,11 @@ extern "C"
         return ptr->ToString(port);
     }
 
+    EXPORT void SystemAddressSetPort(SystemAddress* ptr, unsigned short port)
+    {
+        ptr->port = port;
+    }
+
     EXPORT void SystemAddressSetBinaryAddress(SystemAddress* ptr, const char* address)
     {
         ptr->SetBinaryAddress(address);

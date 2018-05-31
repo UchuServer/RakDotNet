@@ -16,6 +16,7 @@ extern "C"
     EXPORT unsigned int SystemAddressGetBinaryAddress(SystemAddress*);
     EXPORT unsigned short SystemAddressGetPort(SystemAddress*);
     EXPORT const char* SystemAddressToString(SystemAddress*, bool);
+    EXPORT void SystemAddressSetPort(SystemAddress*, unsigned short);
     EXPORT void SystemAddressSetBinaryAddress(SystemAddress*, const char*);
     
     EXPORT unsigned short PacketGetSystemIndex(Packet*);
