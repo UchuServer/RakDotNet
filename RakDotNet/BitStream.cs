@@ -424,7 +424,7 @@ namespace RakDotNet
         public void WriteString(string str, uint length = 33)
         {
             for (var i = 0; i < length; i++)
-                WriteInt8(i < str.Length ? str[i] : (sbyte)0);
+                WriteInt8(i < str.Length ? (sbyte)str[i] : (sbyte)0);
         }
 
         public string ReadString(uint length = 33)
@@ -448,7 +448,7 @@ namespace RakDotNet
         {
             for (var i = 0; i < length; i++)
             {
-                WriteUInt8(i < str.Length ? str[i] : (byte)0);
+                WriteUInt8(i < str.Length ? (byte)str[i] : (byte)0);
                 WriteUInt8((byte)0);
             }
         }
@@ -460,7 +460,7 @@ namespace RakDotNet
             for (var i = 0; i < length; i++)
             {
                 var c = ReadUInt8();
-                ReadUint8();
+                ReadUInt8();
 
                 if (c == 0)
                     continue;
