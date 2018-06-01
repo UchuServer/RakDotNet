@@ -27,9 +27,10 @@ namespace RakDotNet
         {
             get
             {
-                var data = new byte[] { };
+                var len = Length;
+                var data = new byte[len];
 
-                Marshal.Copy(PacketGetData(ptr), data, 0, (int)Length);
+                Marshal.Copy(PacketGetData(ptr), data, 0, (int)len);
 
                 return data;
             }
