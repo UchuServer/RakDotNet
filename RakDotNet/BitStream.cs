@@ -418,5 +418,59 @@ namespace RakDotNet
             => (T)typeof(T).GetMethod("Deserialize").Invoke(null, new object[] { this });
 
         #endregion
+
+        #region Strings
+
+        public void WriteString(string str, uint length = 33)
+        {
+            for (var i = 0; i < length; i++)
+                WriteInt8(i < str.Length ? str[i] : (sbyte)0);
+        }
+
+        public string ReadString(uint length = 33)
+        {
+            var str = "";
+
+            for (var i = 0; i < length; i++)
+            {
+                var c = ReadInt8();
+
+                if (c == 0)
+                    continue;
+
+                str += c;
+            }
+
+            return str;
+        }
+
+        public void WriteWString(string str, uint length = 33)
+        {
+            for (var i = 0; i < length; i++)
+            {
+                WriteUInt8(i < str.Length ? str[i] : (byte)0);
+                WriteUInt8((byte)0);
+            }
+        }
+
+        public string ReadWString(uint length = 33)
+        {
+            var str = "";
+
+            for (var i = 0; i < length; i++)
+            {
+                var c = ReadUInt8();
+                ReadUint8();
+
+                if (c == 0)
+                    continue;
+
+                str += c;
+            }
+
+            return str;
+        }
+
+        #endregion
     }
 }
