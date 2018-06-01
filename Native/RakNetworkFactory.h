@@ -8,8 +8,10 @@
 
 extern "C"
 {
+    /*
     EXPORT RakPeerInterface* RakNetworkFactoryGetRakPeerInterface();
     EXPORT void RakNetworkFactoryDestroyRakPeerInterface(RakPeerInterface*);
+    */
 }
 
 #endif

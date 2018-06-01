@@ -1,6 +1,7 @@
 #ifndef __N_RAKPEERINTERFACE_H__
 #define __N_RAKPEERINTERFACE_H__
 
+#include "RakNet/RakNetworkFactory.h"
 #include "RakNet/RakPeerInterface.h"
 
 #include "Defines.h"
@@ -19,6 +20,9 @@ extern "C"
     EXPORT bool RakPeerInterfaceSend2(RakPeerInterface*, BitStream*, int, int, char, SystemAddress*, bool);
     EXPORT Packet* RakPeerInterfaceReceive(RakPeerInterface*);
     EXPORT void RakPeerInterfaceDeallocatePacket(RakPeerInterface*, Packet*);
+
+    EXPORT RakPeerInterface* RakNetworkFactoryGetRakPeerInterface();
+    EXPORT void RakNetworkFactoryDestroyRakPeerInterface(RakPeerInterface*);
 }
 
 #endif

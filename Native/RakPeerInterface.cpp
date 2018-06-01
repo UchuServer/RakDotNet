@@ -51,4 +51,14 @@ extern "C"
     {
         ptr->DeallocatePacket(packet);
     }
+
+    EXPORT RakPeerInterface* RakNetworkFactoryGetRakPeerInterface()
+    {
+        return RakNetworkFactory::GetRakPeerInterface();
+    }
+
+    EXPORT void RakNetworkFactoryDestroyRakPeerInterface(RakPeerInterface* ptr)
+    {
+        RakNetworkFactory::DestroyRakPeerInterface(ptr);
+    }
 }

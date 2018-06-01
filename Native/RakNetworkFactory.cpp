@@ -2,6 +2,7 @@
 
 extern "C"
 {
+    /*
     EXPORT RakPeerInterface* RakNetworkFactoryGetRakPeerInterface()
     {
         return RakNetworkFactory::GetRakPeerInterface();
@@ -11,4 +12,5 @@ extern "C"
     {
         RakNetworkFactory::DestroyRakPeerInterface(ptr);
     }
+    */
 }
