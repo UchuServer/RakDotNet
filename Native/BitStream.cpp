@@ -17,13 +17,10 @@ extern "C"
         return new BitStream(data, length, copyData);
     }
 
-    EXPORT void DisposeBitStream(BitStream*& s)
+    EXPORT void DisposeBitStream(BitStream* s)
     {
         if (s)
-        {
             delete s;
-            s = NULL;
-        }
     }
 
     EXPORT unsigned int BitStreamGetNumberOfUnreadBits(BitStream* s)

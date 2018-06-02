@@ -11,7 +11,7 @@ extern "C"
     EXPORT BitStream* InitializeBitStream1();
     EXPORT BitStream* InitializeBitStream2(const unsigned int);
     EXPORT BitStream* InitializeBitStream3(unsigned char*, const unsigned int, bool);
-    EXPORT void DisposeBitStream(BitStream*&);
+    EXPORT void DisposeBitStream(BitStream*);
 
     EXPORT unsigned int BitStreamGetNumberOfUnreadBits(BitStream*);
     EXPORT unsigned int BitStreamGetNumberOfBytesUsed(BitStream*);
