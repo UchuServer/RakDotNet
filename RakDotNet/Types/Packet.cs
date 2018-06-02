@@ -15,6 +15,8 @@ namespace RakDotNet
         private static extern uint PacketGetBitSize(IntPtr packet);
         [DllImport("RakDotNetNative")]
         private static extern IntPtr PacketGetData(IntPtr packet);
+        [DllImport("RakDotNetNative")]
+        private static extern IntPtr PacketGetBitStream(IntPtr packet);
 
         internal IntPtr ptr;
         private IntPtr rakPeerPtr;
@@ -35,6 +37,7 @@ namespace RakDotNet
                 return data;
             }
         }
+        public BitStream BitStream => new BitStream(PacketGetBitStream(ptr));
 
         internal Packet(IntPtr packet, IntPtr rakPeerInterface)
         {

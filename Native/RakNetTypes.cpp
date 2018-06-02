@@ -76,4 +76,9 @@ extern "C"
     {
         return ptr->data;
     }
+
+    EXPORT BitStream* PacketGetBitStream(Packet* ptr)
+    {
+        return new BitStream(ptr->data, ptr->length, false);
+    }
 }

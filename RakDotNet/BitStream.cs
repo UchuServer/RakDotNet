@@ -170,6 +170,11 @@ namespace RakDotNet
             ptr = InitializeBitStream1();
         }
 
+        internal BitStream(IntPtr ptr)
+        {
+            this.ptr = ptr;
+        }
+
         public BitStream(uint initialBytesToAllocate)
         {
             ptr = InitializeBitStream2(initialBytesToAllocate);

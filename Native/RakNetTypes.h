@@ -2,8 +2,11 @@
 #define __N_RAKNET_TYPES_H__
 
 #include "RakNet/RakNetTypes.h"
+#include "RakNet/BitStream.h"
 
 #include "Defines.h"
+
+using namespace RakNet;
 
 extern "C"
 {
@@ -24,6 +27,7 @@ extern "C"
     EXPORT unsigned int PacketGetLength(Packet*);
     EXPORT unsigned int PacketGetBitSize(Packet*);
     EXPORT unsigned char* PacketGetData(Packet*);
+    EXPORT BitStream* PacketGetBitStream(Packet*);
 }
 
 #endif
