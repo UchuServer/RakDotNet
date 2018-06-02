@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net;
 using System.Runtime.InteropServices;
 
 namespace RakDotNet
@@ -38,8 +39,11 @@ namespace RakDotNet
             ptr = systemAddress;
         }
 
-        public override string ToString() => SystemAddressToString(ptr, true);
-        public string ToString(bool writePort) => SystemAddressToString(ptr, writePort);
+        public string ToString(bool writePort) => new IPAddress(BinaryAddress).ToString() + (writePort ? $":{Port}" : "");
+        public override string ToString() => ToString(true);
+
+        public string ToStringNative() => SystemAddressToString(ptr, true);
+        public string ToStringNative(bool writePort) => SystemAddressToString(ptr, writePort);
 
         public void SetBinaryAddress(string address) => SystemAddressSetBinaryAddress(ptr, address);
     }
