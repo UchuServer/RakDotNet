@@ -463,7 +463,7 @@ namespace RakDotNet
                 var c = ReadInt8();
 
                 if (c == 0)
-                    continue;
+                    break;
 
                 str += (char)c;
             }
@@ -490,7 +490,7 @@ namespace RakDotNet
                 ReadUInt8();
 
                 if (c == 0)
-                    continue;
+                    break;
 
                 str += (char)c;
             }
