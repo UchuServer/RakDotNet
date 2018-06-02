@@ -22,9 +22,15 @@ namespace RakDotNet
         #endregion
 
         #region Native Other
-        
+
         [DllImport("RakDotNetNative")]
         private static extern uint BitStreamGetNumberOfUnreadBits(IntPtr bitStream);
+
+        [DllImport("RakDotNetNative")]
+        private static extern IntPtr BitStreamGetData(IntPtr bitStream);
+
+        [DllImport("RakDotNetNative")]
+        private static extern uint BitStreamGetNumberOfBytesUsed(IntPtr bitStream);
 
         #endregion
 
@@ -201,6 +207,22 @@ namespace RakDotNet
         #region Other
 
         public uint UnreadBitCount => BitStreamGetNumberOfUnreadBits(ptr);
+
+        public uint BytesUsed => BitStreamGetNumberOfBytesUsed(ptr);
+
+        public byte[] Data
+        {
+            get
+            {
+                var len = BytesUsed;
+                var p = BitStreamGetData(ptr);
+                var data = new byte[len];
+
+                Marshal.Copy(p, data, 0, (int)len);
+
+                return data;
+            }
+        }
 
         #endregion
 

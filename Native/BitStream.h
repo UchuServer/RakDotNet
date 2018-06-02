@@ -14,6 +14,8 @@ extern "C"
     EXPORT void DisposeBitStream(BitStream*&);
 
     EXPORT unsigned int BitStreamGetNumberOfUnreadBits(BitStream*);
+    EXPORT unsigned int BitStreamGetNumberOfBytesUsed(BitStream*);
+    EXPORT unsigned char* BitStreamGetData(BitStream*);
 
     EXPORT unsigned char* BitStreamReadBits(BitStream*, unsigned int, bool);
     EXPORT signed char BitStreamReadInt8(BitStream*);

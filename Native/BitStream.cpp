@@ -31,6 +31,16 @@ extern "C"
         return s->GetNumberOfUnreadBits();
     }
 
+    EXPORT unsigned int BitStreamGetNumberOfBytesUsed(BitStream* s)
+    {
+        return s->GetNumberOfBytesUsed();
+    }
+
+    EXPORT unsigned char* BitStreamGetData(BitStream* s)
+    {
+        return s->GetData();
+    }
+
     EXPORT unsigned char* BitStreamReadBits(BitStream* s, unsigned int length, bool rightAlign = true)
     {
         unsigned char* o;
