@@ -457,15 +457,17 @@ namespace RakDotNet
         public string ReadString(uint length = 33)
         {
             var str = "";
+            var end = false;
 
             for (var i = 0; i < length; i++)
             {
                 var c = ReadInt8();
 
                 if (c == 0)
-                    break;
+                    end = true;
 
-                str += (char)c;
+                if (!end)
+                    str += (char)c;
             }
 
             return str;
@@ -483,6 +485,7 @@ namespace RakDotNet
         public string ReadWString(uint length = 33)
         {
             var str = "";
+            var end = false;
 
             for (var i = 0; i < length; i++)
             {
@@ -490,9 +493,10 @@ namespace RakDotNet
                 ReadUInt8();
 
                 if (c == 0)
-                    break;
+                    end = true;
 
-                str += (char)c;
+                if (!end)
+                    str += (char)c;
             }
 
             return str;
