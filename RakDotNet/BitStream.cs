@@ -465,7 +465,7 @@ namespace RakDotNet
                 if (c == 0)
                     continue;
 
-                str += c;
+                str += (char)c;
             }
 
             return str;
@@ -476,7 +476,7 @@ namespace RakDotNet
             for (var i = 0; i < length; i++)
             {
                 WriteUInt8(i < str.Length ? (byte)str[i] : (byte)0);
-                WriteUInt8((byte)0);
+                WriteUInt8(0);
             }
         }
 
@@ -492,7 +492,7 @@ namespace RakDotNet
                 if (c == 0)
                     continue;
 
-                str += c;
+                str += (char)c;
             }
 
             return str;
