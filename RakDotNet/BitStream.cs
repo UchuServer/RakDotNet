@@ -177,9 +177,9 @@ namespace RakDotNet
 
         public BitStream(byte[] data, uint length, bool copyData = false)
         {
-            var p = Marshal.AllocHGlobal(Marshal.SizeOf<byte>() * data.Length);
+            var p = Marshal.AllocHGlobal(Marshal.SizeOf<byte>() * (int)length);
 
-            Marshal.Copy(data, 0, p, data.Length);
+            Marshal.Copy(data, 0, p, (int)length);
 
             ptr = InitializeBitStream3(p, length, copyData);
 
