@@ -27,6 +27,8 @@ extern "C"
     EXPORT signed long long BitStreamReadInt64(BitStream*);
     EXPORT unsigned long long int BitStreamReadUInt64(BitStream*);
     EXPORT bool BitStreamReadBit(BitStream*);
+    EXPORT bool BitStreamReadBool(BitStream*);
+    EXPORT float BitStreamReadFloat(BitStream*);
 
     EXPORT void BitStreamWriteInt8(BitStream*, signed char);
     EXPORT void BitStreamWriteUInt8(BitStream*, unsigned char);
@@ -37,6 +39,8 @@ extern "C"
     EXPORT void BitStreamWriteInt64(BitStream*, signed long long);
     EXPORT void BitStreamWriteUInt64(BitStream*, unsigned long long int);
     EXPORT void BitStreamWriteBit(BitStream*, bool);
+    EXPORT void BitStreamWriteBool(BitStream*, bool);
+    EXPORT void BitStreamWriteFloat(BitStream*, float);
 
     EXPORT signed char BitStreamReadInt8Compressed(BitStream*);
     EXPORT unsigned char BitStreamReadUInt8Compressed(BitStream*);

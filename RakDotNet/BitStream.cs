@@ -66,6 +66,12 @@ namespace RakDotNet
         [DllImport("RakDotNetNative")]
         private static extern bool BitStreamReadBit(IntPtr bitStream);
 
+        [DllImport("RakDotNetNative")]
+        private static extern bool BitStreamReadBool(IntPtr bitStream);
+
+        [DllImport("RakDotNetNative")]
+        private static extern float BitStreamReadFloat(IntPtr bitStream);
+
         #endregion
 
         #region Native Writes
@@ -96,6 +102,12 @@ namespace RakDotNet
 
         [DllImport("RakDotNetNative")]
         private static extern void BitStreamWriteBit(IntPtr bitStream, bool val);
+
+        [DllImport("RakDotNetNative")]
+        private static extern void BitStreamWriteBool(IntPtr bitStream, bool val);
+
+        [DllImport("RakDotNetNative")]
+        private static extern void BitStreamWriteFloat(IntPtr bitStream, float val);
 
         #endregion
 
@@ -287,6 +299,16 @@ namespace RakDotNet
             return BitStreamReadBit(ptr);
         }
 
+        public bool ReadBool()
+        {
+            return BitStreamReadBool(ptr);
+        }
+
+        public float ReadFloat()
+        {
+            return BitStreamReadFloat(ptr);
+        }
+
         #endregion
 
         #region Writes
@@ -334,6 +356,16 @@ namespace RakDotNet
         public void WriteBit(bool val)
         {
             BitStreamWriteBit(ptr, val);
+        }
+
+        public void WriteBool(bool val)
+        {
+            BitStreamWriteBool(ptr, val);
+        }
+
+        public void WriteFloat(float val)
+        {
+            BitStreamWriteFloat(ptr, val);
         }
 
         #endregion

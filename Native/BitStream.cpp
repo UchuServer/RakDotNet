@@ -118,6 +118,22 @@ extern "C"
         return o;
     }
 
+    EXPORT bool BitStreamReadBool(BitStream* s)
+    {
+        unsigned char o;
+        s->Read(o);
+
+        return o == 1;
+    }
+
+    EXPORT float BitStreamReadFloat(BitStream* s)
+    {
+        float o;
+        s->Read(o);
+        
+        return o;
+    }
+
     EXPORT void BitStreamWriteInt8(BitStream* s, signed char i)
     {
         s->Write(i);
@@ -159,6 +175,16 @@ extern "C"
     }
 
     EXPORT void BitStreamWriteBit(BitStream* s, bool i)
+    {
+        s->Write(i);
+    }
+
+    EXPORT void BitStreamWriteBool(BitStream* s, bool i)
+    {
+        s->Write((unsigned char)i);
+    }
+
+    EXPORT void BitStreamWriteFloat(BitStream* s, float i)
     {
         s->Write(i);
     }
