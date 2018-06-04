@@ -194,13 +194,19 @@ namespace RakDotNet
 
         public BitStream(byte[] data, uint length, bool copyData = false)
         {
-            var p = Marshal.AllocHGlobal(Marshal.SizeOf<byte>() * (int)length);
+            /*
+            var p = Marshal.AllocHGlobal((int)length);
 
             Marshal.Copy(data, 0, p, (int)length);
+            */
 
-            ptr = InitializeBitStream3(p, length, copyData);
+            var handle = GCHandle.Alloc(data);
 
-            Marshal.FreeHGlobal(p);
+            ptr = InitializeBitStream3(handle.AddrOfPinnedObject(), length, copyData);
+
+            handle.Free();
+
+            // Marshal.FreeHGlobal(p);
         }
 
         public BitStream(byte[] data, bool copyData = false)
