@@ -16,6 +16,10 @@ extern "C"
     EXPORT unsigned int BitStreamGetNumberOfUnreadBits(BitStream*);
     EXPORT unsigned int BitStreamGetNumberOfBytesUsed(BitStream*);
     EXPORT unsigned char* BitStreamGetData(BitStream*);
+    EXPORT unsigned int BitStreamGetReadOffset(BitStream*);
+    EXPORT void BitStreamSetReadOffset(BitStream*, unsigned int);
+    EXPORT unsigned int BitStreamGetWriteOffset(BitStream*);
+    EXPORT void BitStreamSetWriteOffset(BitStream*, unsigned int);
 
     EXPORT unsigned char* BitStreamReadBits(BitStream*, unsigned int, bool);
     EXPORT signed char BitStreamReadInt8(BitStream*);

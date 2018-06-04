@@ -38,6 +38,26 @@ extern "C"
         return s->GetData();
     }
 
+    EXPORT unsigned int BitStreamGetReadOffset(BitStream* s)
+    {
+        return s->GetReadOffset();
+    }
+
+    EXPORT void BitStreamSetReadOffset(BitStream* s, unsigned int i)
+    {
+        s->SetReadOffset(i);
+    }
+
+    EXPORT unsigned int BitStreamGetWriteOffset(BitStream* s)
+    {
+        return s->GetWriteOffset();
+    }
+
+    EXPORT void BitStreamSetWriteOffset(BitStream* s, unsigned int i)
+    {
+        s->SetWriteOffset(i);
+    }
+
     EXPORT unsigned char* BitStreamReadBits(BitStream* s, unsigned int length, bool rightAlign = true)
     {
         unsigned char* o;

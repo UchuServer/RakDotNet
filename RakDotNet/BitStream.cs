@@ -32,6 +32,18 @@ namespace RakDotNet
         [DllImport("RakDotNetNative")]
         private static extern uint BitStreamGetNumberOfBytesUsed(IntPtr bitStream);
 
+        [DllImport("RakDotNetNative")]
+        private static extern uint BitStreamGetReadOffset(IntPtr bitStream);
+
+        [DllImport("RakDotNetNative")]
+        private static extern void BitStreamSetReadOffset(IntPtr bitStream, uint offset);
+
+        [DllImport("RakDotNetNative")]
+        private static extern uint BitStreamGetWriteOffset(IntPtr bitStream);
+
+        [DllImport("RakDotNetNative")]
+        private static extern void BitStreamSetWriteOffset(IntPtr bitStream, uint offsett);
+
         #endregion
 
         #region Native Reads
@@ -194,19 +206,11 @@ namespace RakDotNet
 
         public BitStream(byte[] data, uint length, bool copyData = false)
         {
-            /*
-            var p = Marshal.AllocHGlobal((int)length);
-
-            Marshal.Copy(data, 0, p, (int)length);
-            */
-
             var handle = GCHandle.Alloc(data, GCHandleType.Pinned);
 
             ptr = InitializeBitStream3(handle.AddrOfPinnedObject(), length, copyData);
 
             handle.Free();
-
-            // Marshal.FreeHGlobal(p);
         }
 
         public BitStream(byte[] data, bool copyData = false)
@@ -245,6 +249,18 @@ namespace RakDotNet
 
                 return data;
             }
+        }
+
+        public uint ReadOffset
+        {
+            get => BitStreamGetReadOffset(ptr);
+            set => BitStreamSetReadOffset(ptr, value);
+        }
+
+        public uint WriteOffset
+        {
+            get => BitStreamGetWriteOffset(ptr);
+            set => BitStreamSetWriteOffset(ptr, value);
         }
 
         #endregion
