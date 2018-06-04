@@ -200,7 +200,7 @@ namespace RakDotNet
             Marshal.Copy(data, 0, p, (int)length);
             */
 
-            var handle = GCHandle.Alloc(data);
+            var handle = GCHandle.Alloc(data, GCHandleType.Pinned);
 
             ptr = InitializeBitStream3(handle.AddrOfPinnedObject(), length, copyData);
 
