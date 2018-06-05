@@ -61,4 +61,19 @@ extern "C"
     {
         RakNetworkFactory::DestroyRakPeerInterface(ptr);
     }
+
+    EXPORT void RakPeerInterfaceAttachPlugin(RakPeerInterface* ptr , PluginInterface* i)
+    {
+        ptr->AttachPlugin(i);
+    }
+
+    EXPORT void RakPeerInterfaceSetNetworkIDManager(RakPeerInterface* ptr, NetworkIDManager* i)
+    {
+        ptr->SetNetworkIDManager(i);
+    }
+
+    EXPORT NetworkIDManager* RakPeerInterfaceGetNetworkIDManager(RakPeerInterface* ptr)
+    {
+        return ptr->GetNetworkIDManager();
+    }
 }

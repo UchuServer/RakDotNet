@@ -27,6 +27,12 @@ namespace RakDotNet
         private static extern IntPtr RakPeerInterfaceReceive(IntPtr ptr);
         [DllImport("RakDotNetNative")]
         internal static extern void RakPeerInterfaceDeallocatePacket(IntPtr ptr, IntPtr packet);
+        [DllImport("RakDotNetNative")]
+        private static extern void RakPeerInterfaceAttachPlugin(IntPtr ptr, IntPtr plugin);
+        [DllImport("RakDotNetNative")]
+        private static extern void RakPeerInterfaceSetNetworkIDManager(IntPtr ptr, IntPtr networkIdManager);
+        [DllImport("RakDotNetNative")]
+        private static extern IntPtr RakPeerInterfaceGetNetworkIDManager(IntPtr ptr);
 
         internal IntPtr ptr;
 
@@ -86,5 +92,7 @@ namespace RakDotNet
         }
 
         public void DeallocatePacket(Packet packet) => RakPeerInterfaceDeallocatePacket(ptr, packet.ptr);
+
+        public void AttachPlugin(IPlugin plugin) => RakPeerInterfaceAttachPlugin(ptr, plugin.ptr);
     }
 }

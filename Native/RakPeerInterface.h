@@ -20,6 +20,9 @@ extern "C"
     EXPORT bool RakPeerInterfaceSend2(RakPeerInterface*, BitStream*, int, int, char, SystemAddress*, bool);
     EXPORT Packet* RakPeerInterfaceReceive(RakPeerInterface*);
     EXPORT void RakPeerInterfaceDeallocatePacket(RakPeerInterface*, Packet*);
+    EXPORT void RakPeerInterfaceAttachPlugin(RakPeerInterface*, PluginInterface*);
+    EXPORT void RakPeerInterfaceSetNetworkIDManager(RakPeerInterface*, NetworkIDManager*);
+    EXPORT NetworkIDManager* RakPeerInterfaceGetNetworkIDManager(RakPeerInterface*);
 
     EXPORT RakPeerInterface* RakNetworkFactoryGetRakPeerInterface();
     EXPORT void RakNetworkFactoryDestroyRakPeerInterface(RakPeerInterface*);

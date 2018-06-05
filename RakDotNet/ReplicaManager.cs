@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 
 namespace RakDotNet
 {
-    public class ReplicaManager
+    public class ReplicaManager : IPlugin
     {
         [DllImport("RakDotNetNative")]
         private static extern void ReplicaManagerSetAutoParticipateNewConnections(IntPtr ptr, bool autoAdd);
@@ -112,5 +112,7 @@ namespace RakDotNet
             => ReplicaManagerIsInScope(ptr, replica.ptr, address.ptr);
         public bool HasParticipant(SystemAddress address)
             => ReplicaManagerHasParticipant(ptr, address.ptr);
+
+        IntPtr IPlugin.ptr => ptr;
     }
 }
