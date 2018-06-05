@@ -33,7 +33,7 @@ public:
 extern "C"
 {
     EXPORT NativeReplica* InitializeNativePacket();
-    EXPORT void DisposeNativePacket(NativeReplica*&);
+    EXPORT void DisposeNativePacket(NativeReplica*);
 
     EXPORT void NativePacketSetConstructCallback(NativeReplica*, void(*)(RakNetTime*, SystemAddress*, unsigned int&, BitStream*, bool));
     EXPORT void NativePacketSetScopeChangeCallback(NativeReplica*, void(*)(bool, BitStream*, RakNetTime*, SystemAddress*, bool));

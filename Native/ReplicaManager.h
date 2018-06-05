@@ -2,14 +2,12 @@
 #define __N_REPLICAMANAGER_H__
 
 #include "RakNet/ReplicaManager.h"
+#include "RakNet/RakNetworkFactory.h"
 
 #include "Defines.h"
 
 extern "C"
 {
-    EXPORT ReplicaManager* InitializeReplicaManager();
-    EXPORT void DisposeReplicaManager(ReplicaManager*&);
-
     EXPORT void ReplicaManagerSetAutoParticipateNewConnections(ReplicaManager*, bool);
     EXPORT bool ReplicaManagerAddParticipant(ReplicaManager*, SystemAddress*);
     EXPORT bool ReplicaManagerRemoveParticipant(ReplicaManager*, SystemAddress*);
@@ -33,6 +31,9 @@ extern "C"
     EXPORT unsigned int ReplicaManagerGetParticipantCount(ReplicaManager*);
     EXPORT SystemAddress* ReplicaManagerGetParticipantAtIndex(ReplicaManager*, unsigned int);
     EXPORT bool ReplicaManagerHasParticipant(ReplicaManager*, SystemAddress*);
+
+    EXPORT ReplicaManager* RakNetworkFactoryGetReplicaManager();
+    EXPORT void RakNetworkFactoryDestroyReplicaManager(ReplicaManager*);
 }
 
 #endif

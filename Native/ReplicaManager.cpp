@@ -2,20 +2,6 @@
 
 extern "C"
 {
-    EXPORT ReplicaManager* InitializeReplicaManager()
-    {
-        return new ReplicaManager();
-    }
-
-    EXPORT void DisposeReplicaManager(ReplicaManager*& ptr)
-    {
-        if (ptr)
-        {
-            delete ptr;
-            ptr = NULL;
-        }
-    }
-
     EXPORT void ReplicaManagerSetAutoParticipateNewConnections(ReplicaManager* ptr, bool autoAdd)
     {
         ptr->SetAutoParticipateNewConnections(autoAdd);
@@ -129,5 +115,15 @@ extern "C"
     EXPORT bool ReplicaManagerHasParticipant(ReplicaManager* ptr, SystemAddress* systemAddress)
     {
         return ptr->HasParticipant(*systemAddress);
+    }
+
+    EXPORT ReplicaManager* RakNetworkFactoryGetReplicaManager()
+    {
+        return RakNetworkFactory::GetReplicaManager();
+    }
+
+    EXPORT void RakNetworkFactoryDestroyReplicaManager(ReplicaManager* ptr)
+    {
+        RakNetworkFactory::DestroyReplicaManager(ptr);
     }
 }

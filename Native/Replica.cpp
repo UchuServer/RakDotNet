@@ -55,13 +55,10 @@ extern "C"
         return new NativeReplica();
     }
 
-    EXPORT void DisposeNativePacket(NativeReplica*& ptr)
+    EXPORT void DisposeNativePacket(NativeReplica* ptr)
     {
         if (ptr)
-        {
             delete ptr;
-            ptr = NULL;
-        }
     }
 
     EXPORT void NativePacketSetConstructCallback(NativeReplica* ptr, void(*construct)(RakNetTime*, SystemAddress*, unsigned int&, BitStream*, bool))

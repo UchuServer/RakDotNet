@@ -47,7 +47,8 @@ namespace RakDotNet
 
         ~RakPeerInterface()
         {
-            RakNetworkFactory.RakNetworkFactoryDestoryRakPeerInterface(ptr);
+            RakNetworkFactory.RakNetworkFactoryDestroyRakPeerInterface(ptr);
+            ptr = IntPtr.Zero;
         }
 
         public bool Startup(ushort maxConnections, int threadSleepTimer, SocketDescriptor socketDescriptor)
