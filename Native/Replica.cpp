@@ -50,28 +50,28 @@ ReplicaReturnResult NativeReplica::Deserialize(BitStream*, RakNetTime, RakNetTim
 
 extern "C"
 {
-    EXPORT NativeReplica* InitializeNativePacket()
+    EXPORT NativeReplica* InitializeNativeReplica()
     {
         return new NativeReplica();
     }
 
-    EXPORT void DisposeNativePacket(NativeReplica* ptr)
+    EXPORT void DisposeNativeReplica(NativeReplica* ptr)
     {
         if (ptr)
             delete ptr;
     }
 
-    EXPORT void NativePacketSetConstructCallback(NativeReplica* ptr, void(*construct)(RakNetTime*, SystemAddress*, unsigned int&, BitStream*, bool))
+    EXPORT void NativeReplicaSetConstructCallback(NativeReplica* ptr, void(*construct)(RakNetTime*, SystemAddress*, unsigned int&, BitStream*, bool))
     {
         ptr->constructCB = construct;
     }
 
-    EXPORT void NativePacketSetScopeChangeCallback(NativeReplica* ptr, void(*scopeChange)(bool, BitStream*, RakNetTime*, SystemAddress*, bool))
+    EXPORT void NativeReplicaSetScopeChangeCallback(NativeReplica* ptr, void(*scopeChange)(bool, BitStream*, RakNetTime*, SystemAddress*, bool))
     {
         ptr->scopeChangeCB = scopeChange;
     }
 
-    EXPORT void NativePacketSetSerializeCallback(NativeReplica* ptr, void(*serialize)(bool, BitStream*, RakNetTime*, int, int, RakNetTime*, SystemAddress*, unsigned int&))
+    EXPORT void NativeReplicaSetSerializeCallback(NativeReplica* ptr, void(*serialize)(bool, BitStream*, RakNetTime*, int, int, RakNetTime*, SystemAddress*, unsigned int&))
     {
         ptr->serializeCB = serialize;
     }

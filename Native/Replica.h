@@ -32,12 +32,12 @@ public:
 
 extern "C"
 {
-    EXPORT NativeReplica* InitializeNativePacket();
-    EXPORT void DisposeNativePacket(NativeReplica*);
+    EXPORT NativeReplica* InitializeNativReplica();
+    EXPORT void DisposeNativeReplica(NativeReplica*);
 
-    EXPORT void NativePacketSetConstructCallback(NativeReplica*, void(*)(RakNetTime*, SystemAddress*, unsigned int&, BitStream*, bool));
-    EXPORT void NativePacketSetScopeChangeCallback(NativeReplica*, void(*)(bool, BitStream*, RakNetTime*, SystemAddress*, bool));
-    EXPORT void NativePacketSetSerializeCallback(NativeReplica*, void(*)(bool, BitStream*, RakNetTime*, int, int, RakNetTime*, SystemAddress*, unsigned int&));
+    EXPORT void NativeReplicaSetConstructCallback(NativeReplica*, void(*)(RakNetTime*, SystemAddress*, unsigned int&, BitStream*, bool));
+    EXPORT void NativeReplicaSetScopeChangeCallback(NativeReplica*, void(*)(bool, BitStream*, RakNetTime*, SystemAddress*, bool));
+    EXPORT void NativeReplicaSetSerializeCallback(NativeReplica*, void(*)(bool, BitStream*, RakNetTime*, int, int, RakNetTime*, SystemAddress*, unsigned int&));
 }
 
 #endif
