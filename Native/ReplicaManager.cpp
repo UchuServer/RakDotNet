@@ -109,7 +109,9 @@ extern "C"
 
     EXPORT SystemAddress* ReplicaManagerGetParticipantAtIndex(ReplicaManager* ptr, unsigned int index)
     {
-        return &ptr->GetParticipantAtIndex(index);
+        SystemAddress addr = ptr->GetParticipantAtIndex(index);
+
+        return &addr;
     }
 
     EXPORT bool ReplicaManagerHasParticipant(ReplicaManager* ptr, SystemAddress* systemAddress)
