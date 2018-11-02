@@ -12,7 +12,7 @@ namespace RakDotNet
         public event Func<byte[], IPEndPoint, Task> PacketReceived;
         public event Func<IPEndPoint, Task> NewConnection;
         public event Func<IPEndPoint, Task> Disconnection;
-        
+
         private readonly UdpClient _udp;
         private readonly Dictionary<IPEndPoint, ReliabilityLayer> _connections;
         private readonly byte[] _password;
@@ -32,12 +32,12 @@ namespace RakDotNet
             _startTime = DateTimeOffset.Now;
             _active = false;
         }
-        
+
         public async Task StartAsync()
         {
             if (_active)
                 throw new InvalidOperationException("Already active");
-            
+
             _active = true;
 
             while (_active)
@@ -45,7 +45,7 @@ namespace RakDotNet
                 var datagram = await _udp.ReceiveAsync().ConfigureAwait(false);
                 var data = datagram.Buffer;
                 var endpoint = datagram.RemoteEndPoint;
-                
+
                 if (data.Length <= 2)
                 {
                     if (data[0] != (byte) MessageIdentifiers.OpenConnectionRequest) continue;
@@ -77,15 +77,15 @@ namespace RakDotNet
                                 break;
                             case MessageIdentifiers.NewIncomingConnection:
                                 if (NewConnection != null)
-                                    await NewConnection(endpoint);
+                                    await NewConnection(endpoint).ConfigureAwait(false);
                                 break;
                             case MessageIdentifiers.DisconnectionNotification:
                                 if (Disconnection != null)
-                                    await Disconnection(endpoint);
+                                    await Disconnection(endpoint).ConfigureAwait(false);
                                 break;
                             case MessageIdentifiers.UserPacketEnum:
                                 if (PacketReceived != null)
-                                    await PacketReceived(data, endpoint);
+                                    await PacketReceived(data, endpoint).ConfigureAwait(false);
                                 break;
                         }
                     }
@@ -93,7 +93,7 @@ namespace RakDotNet
             }
         }
 
-        public void Send(BitStream stream, IPEndPoint endpoint, 
+        public void Send(BitStream stream, IPEndPoint endpoint,
             PacketReliability reliability = PacketReliability.ReliableOrdered)
             => Send(stream, new[] {endpoint}, false, reliability);
 
@@ -104,12 +104,12 @@ namespace RakDotNet
         public void Send(byte[] data, IPEndPoint endpoint,
             PacketReliability reliability = PacketReliability.ReliableOrdered)
             => Send(data, new[] {endpoint}, false, reliability);
-        
+
         public void Send(byte[] data, IPEndPoint[] endpoints = null, bool broadcast = false,
             PacketReliability reliability = PacketReliability.ReliableOrdered)
         {
             var recipients = broadcast || endpoints == null ? _connections.Keys.ToArray() : endpoints;
-            
+
             foreach (var endpoint in recipients)
             {
                 if (!_connections.ContainsKey(endpoint))
@@ -126,14 +126,14 @@ namespace RakDotNet
             if (password == _password)
             {
                 var res = new BitStream();
-                
+
                 res.WriteByte((byte) MessageIdentifiers.ConnectionRequestAccepted);
                 res.Write(endpoint.Address.GetAddressBytes());
                 res.WriteUShort((ushort) endpoint.Port);
                 res.Write(new byte[2]);
                 res.Write(_endpoint.Address.GetAddressBytes());
                 res.WriteUShort((ushort) _endpoint.Port);
-                
+
                 Send(res, endpoint, PacketReliability.Reliable);
             }
             else
@@ -143,9 +143,9 @@ namespace RakDotNet
         private void _handleInternalPing(BitStream stream, IPEndPoint endpoint)
         {
             var time = stream.ReadUInt();
-            
+
             var pong = new BitStream();
-            
+
             pong.WriteByte((byte) MessageIdentifiers.ConnectedPong);
             pong.WriteUInt(time);
             pong.WriteUInt((uint) (DateTimeOffset.Now.ToUnixTimeMilliseconds() - _startTime.ToUnixTimeMilliseconds()));
