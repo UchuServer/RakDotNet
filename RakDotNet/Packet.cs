@@ -1,14 +1,19 @@
 namespace RakDotNet
 {
-    public struct Packet
+    public class Packet
     {
-        public byte[] Data { get; set; }
+        public uint MessageNumber { get; set; }
+        
         public PacketReliability Reliability { get; set; }
+        
+        public byte OrderingChannel { get; set; }
         public uint OrderingIndex { get; set; }
         
         public bool SplitPacket { get; set; }
         public ushort SplitPacketId { get; set; }
-        public int SplitPacketIndex { get; set; }
-        public int SplitPacketCount { get; set; }
+        public uint SplitPacketIndex { get; set; }
+        public uint SplitPacketCount { get; set; }
+        
+        public byte[] Data { get; set; }
     }
 }

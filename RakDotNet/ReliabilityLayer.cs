@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading.Tasks;
 
 namespace RakDotNet
 {
@@ -18,6 +19,7 @@ namespace RakDotNet
         private readonly List<Packet> _sends;
         private readonly Dictionary<uint, Resend> _resends;
 
+        private bool _active;
         private DateTimeOffset _lastAckTime;
         private uint _splitPacketId;
         private DateTimeOffset _remoteSystemTime;
@@ -49,6 +51,7 @@ namespace RakDotNet
             _splitPacketQueue = new Dictionary<uint, byte[][]>();
             _sends = new List<Packet>();
             _resends = new Dictionary<uint, Resend>();
+            _active = false;
         }
 
         public IEnumerable<byte[]> HandleDatagram(byte[] buffer)
@@ -207,6 +210,46 @@ namespace RakDotNet
 
                 yield return internalPacket.Data;
             }
+        }
+
+        public async Task StartSendLoopAsync()
+        {
+            _active = true;
+            
+            while (true)
+            {
+                await Task.Delay(30);
+
+                foreach (var entry in _resends)
+                {
+                    var messageNum = entry.Key;
+                    var resend = entry.Value;
+
+                    if (resend.Time > DateTimeOffset.Now)
+                        continue;
+
+                    if (_sent >= _congestionWindow)
+                        break;
+
+                    _sent++;
+
+                    resend.Packet.MessageNumber = messageNum;
+
+                    await _sendPacketAsync(resend.Packet);
+                    
+                    // TODO
+                }
+            }
+        }
+
+        public void StopSendLoop()
+        {
+            _active = false;
+        }
+
+        private async Task _sendPacketAsync(Packet packet)
+        {
+            
         }
 
         public void Send(byte[] data, PacketReliability reliability)

@@ -2,9 +2,9 @@ using System;
 
 namespace RakDotNet
 {
-    public struct Resend
+    public class Resend
     {
-        public DateTimeOffset Time;
-        public Packet Packet;
+        public DateTimeOffset Time { get; set; }
+        public Packet Packet { get; set; }
     }
 }
