@@ -155,7 +155,7 @@ namespace RakDotNet
                 res.Write(_endpoint.Address.GetAddressBytes());
                 res.WriteUShort((ushort) _endpoint.Port);
 
-                // Send(res, endpoint, PacketReliability.Reliable);
+                Send(res, endpoint, PacketReliability.Reliable);
             }
             else
                 throw new NotImplementedException();

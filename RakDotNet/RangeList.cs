@@ -11,12 +11,14 @@ namespace RakDotNet
         public T Max { get; set; }
     }
 
-    public abstract class RangeList<T> : ISerializable, IEnumerable<Range<T>>
+    public abstract class RangeList<T> : ISerializable, IEnumerable<T>
         where T : struct
     {
         protected readonly List<Range<T>> _ranges;
 
-        public int Count => _ranges.Count;
+        public int RangeCount => _ranges.Count;
+        public abstract int Count { get; }
+        public abstract int HoleCount { get; }
 
         protected RangeList()
         {
@@ -24,12 +26,13 @@ namespace RakDotNet
         }
 
         public abstract void Add(T item);
+        
+        public abstract IEnumerable<T> GetHoles();
 
         public void Clear()
             => _ranges.Clear();
 
-        public IEnumerator<Range<T>> GetEnumerator()
-            => _ranges.GetEnumerator();
+        public abstract IEnumerator<T> GetEnumerator();
 
         IEnumerator IEnumerable.GetEnumerator()
             => GetEnumerator();
@@ -41,6 +44,73 @@ namespace RakDotNet
 
     public class UIntRangeList : RangeList<uint>
     {
+        public override int Count 
+        {
+            get
+            {
+                var length = 0u;
+
+                foreach (var range in _ranges)
+                {
+                    length += range.Max - range.Min + 1;
+                }
+                
+                return (int) length;
+            }
+        }
+
+        public override int HoleCount
+        {
+            get
+            {
+                var holes = 0u;
+                var lastMax = 0u;
+
+                for (var i = 0; i < _ranges.Count; i++)
+                {
+                    var range = _ranges[i];
+                    
+                    if (i != 0)
+                        holes += range.Min - lastMax - 1;
+
+                    lastMax = range.Max;
+                }
+
+                return (int) holes;
+            }
+        }
+
+        public override IEnumerable<uint> GetHoles()
+        {
+            var lastMax = 0u;
+
+            for (var i = 0; i < _ranges.Count; i++)
+            {
+                var range = _ranges[i];
+
+                if (i != 0)
+                {
+                    for (var ii = lastMax + 1; range.Min < ii; ii++)
+                    {
+                        yield return ii;
+                    }
+                }
+
+                lastMax = range.Max;
+            }
+        }
+
+        public override IEnumerator<uint> GetEnumerator()
+        {
+            foreach (var range in _ranges)
+            {
+                for (var i = range.Min; i < range.Max; i++)
+                {
+                    yield return i;
+                }
+            }
+        }
+
         public override void Add(uint item)
         {
             for (var i = 0; i < _ranges.Count; i++)
@@ -101,14 +171,14 @@ namespace RakDotNet
         public override void Serialize(BitStream stream)
         {
             stream.WriteUShortCompressed((ushort) _ranges.Count);
-
+            
             foreach (var range in _ranges)
             {
                 var equalsMin = range.Min == range.Max;
 
                 stream.WriteBit(equalsMin);
                 stream.WriteUInt(range.Min);
-
+                
                 if (!equalsMin)
                     stream.WriteUInt(range.Max);
             }

@@ -57,6 +57,34 @@ namespace RakDotNet
             _bitsRead += 8 - (((_bitsRead - 1) & 7) + 1);
         }
 
+        public void IncreaseBuffer(int bitCount)
+        {
+            if (bitCount <= 0)
+                throw new ArgumentException("Bit count must be >0", nameof(bitCount));
+
+            var newBitCount = bitCount + _bitsWritten;
+
+            if (newBitCount > 0 && (BytesToBits(_buffer.Length) - 1) >> 3 < (newBitCount - 1) >> 3)
+            {
+                newBitCount *= 2;
+
+                var temp = _buffer;
+
+                _buffer = new byte[BitsToBytes(newBitCount)];
+                
+                Buffer.BlockCopy(temp, 0, _buffer, 0, temp.Length);
+            }
+
+            if (newBitCount > BytesToBits(_buffer.Length))
+            {
+                var temp = _buffer;
+
+                _buffer = new byte[BitsToBytes(newBitCount)];
+                
+                Buffer.BlockCopy(temp, 0, _buffer, 0, temp.Length);
+            }
+        }
+
         #region Bits
 
         public void WriteBits(byte[] input, int bitCount, bool rightAligned = true)
@@ -65,7 +93,7 @@ namespace RakDotNet
                 throw new ArgumentException("Bit count has to be >0", nameof(bitCount));
 
             var bytes = BitsToBytes(_bitsWritten + bitCount);
-
+            
             if (bytes > _buffer.Length)
                 Capacity = bytes;
 
@@ -268,7 +296,7 @@ namespace RakDotNet
 
                 Buffer.BlockCopy(input, 0, _buffer, BitsToBytes(_bitsWritten), input.Length);
 
-                _bitsWritten += BytesToBits(_buffer.Length);
+                _bitsWritten += BytesToBits(input.Length);
             }
             else
             {

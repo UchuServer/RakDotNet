@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -69,7 +70,7 @@ namespace RakDotNet
 
             if (stream.ReadBit()) // has acks
             {
-                var ourSystemTime = (long) stream.ReadULong();
+                var ourSystemTime = (long) stream.ReadUInt();
                 var roundTripTime = DateTimeOffset.Now.ToUnixTimeMilliseconds() - _startTime.ToUnixTimeMilliseconds() -
                                     ourSystemTime;
 
@@ -99,25 +100,13 @@ namespace RakDotNet
 
                 foreach (var ack in acks)
                 {
-                    for (var i = ack.Min; i >= ack.Min && i <= ack.Max; i++)
-                    {
-                        if (_resends.ContainsKey(i))
-                            _resends.Remove(i);
-                    }
-
-                    if (lastMax != null)
-                    {
-                        for (var i = (uint) lastMax + 1; i >= (uint) lastMax + 1 && i <= ack.Min; i++)
-                        {
-                            if (_resends.ContainsKey(i))
-                                holes++;
-                        }
-                    }
-
-                    lastMax = ack.Max;
+                    if (_resends.ContainsKey(ack))
+                        _resends.Remove(ack);
                 }
 
-                if (holes > 0)
+                var actHoles = acks.GetHoles().Count(hole => _resends.ContainsKey(hole));
+
+                if (actHoles > 0)
                 {
                     _slowStartThreshold = _congestionWindow / 2;
                     _congestionWindow = _slowStartThreshold;
@@ -126,7 +115,7 @@ namespace RakDotNet
                 {
                     if (_sent >= _congestionWindow)
                     {
-                        _congestionWindow += acks.Count > _slowStartThreshold
+                        _congestionWindow += acks.Count > _slowStartThreshold && _congestionWindow > 0
                             ? acks.Count / _congestionWindow
                             : acks.Count;
                     }
@@ -305,27 +294,41 @@ namespace RakDotNet
         }
 
         private async Task _sendPacketAsync(InternalPacket packet)
-        {
+        {   
             var stream = new BitStream();
 
-            var hasAcks = _acks.Count > 0;
+            var hasAcks = _acks.RangeCount > 0;
 
             stream.WriteBit(hasAcks);
 
             if (hasAcks)
-            {
+            {   
                 stream.WriteUInt((uint) _remoteSystemTime.ToUnixTimeMilliseconds());
+
+                File.WriteAllBytes("header1.bin", stream.BaseBuffer);
+                
                 stream.WriteSerializable(_acks);
+                
+                File.WriteAllBytes("header2.bin", stream.BaseBuffer);
 
                 _acks.Clear();
             }
-
+            
             stream.WriteBit(true);
+            
+            File.WriteAllBytes("header3.bin", stream.BaseBuffer);
 
             var time = DateTimeOffset.Now.ToUnixTimeMilliseconds() - _startTime.ToUnixTimeMilliseconds();
+            
             stream.WriteUInt((uint) time);
             
+            File.WriteAllBytes("header4.bin", stream.BaseBuffer);
+            
+            // before
+            
             stream.WriteSerializable(packet);
+            
+            File.WriteAllBytes("packet.bin", stream.BaseBuffer);
 
             await _udp.SendAsync(stream.BaseBuffer, stream.BaseBuffer.Length, _endpoint).ConfigureAwait(false);
         }
@@ -361,6 +364,7 @@ namespace RakDotNet
                         Data = chunk,
                         Reliability = reliability,
                         OrderingIndex = (uint) orderingIndex,
+                        OrderingChannel = 0,
                         SplitPacket = true,
                         SplitPacketId = (ushort) splitPacketId,
                         SplitPacketIndex = (uint) chunks.IndexOf(chunk),
@@ -374,6 +378,7 @@ namespace RakDotNet
                     Data = data,
                     Reliability = reliability,
                     OrderingIndex = (uint) orderingIndex,
+                    OrderingChannel = 0,
                     SplitPacket = false
                 });
         }
