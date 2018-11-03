@@ -14,23 +14,23 @@ namespace RakDotNet
     public abstract class RangeList<T> : ISerializable, IEnumerable<T>
         where T : struct
     {
-        protected readonly List<Range<T>> _ranges;
+        protected readonly List<Range<T>> Ranges;
 
-        public int RangeCount => _ranges.Count;
+        public int RangeCount => Ranges.Count;
         public abstract int Count { get; }
         public abstract int HoleCount { get; }
 
         protected RangeList()
         {
-            _ranges = new List<Range<T>>();
+            Ranges = new List<Range<T>>();
         }
 
         public abstract void Add(T item);
-        
+
         public abstract IEnumerable<T> GetHoles();
 
         public void Clear()
-            => _ranges.Clear();
+            => Ranges.Clear();
 
         public abstract IEnumerator<T> GetEnumerator();
 
@@ -44,17 +44,17 @@ namespace RakDotNet
 
     public class UIntRangeList : RangeList<uint>
     {
-        public override int Count 
+        public override int Count
         {
             get
             {
                 var length = 0u;
 
-                foreach (var range in _ranges)
+                foreach (var range in Ranges)
                 {
                     length += range.Max - range.Min + 1;
                 }
-                
+
                 return (int) length;
             }
         }
@@ -66,10 +66,10 @@ namespace RakDotNet
                 var holes = 0u;
                 var lastMax = 0u;
 
-                for (var i = 0; i < _ranges.Count; i++)
+                for (var i = 0; i < Ranges.Count; i++)
                 {
-                    var range = _ranges[i];
-                    
+                    var range = Ranges[i];
+
                     if (i != 0)
                         holes += range.Min - lastMax - 1;
 
@@ -84,13 +84,13 @@ namespace RakDotNet
         {
             var lastMax = 0u;
 
-            for (var i = 0; i < _ranges.Count; i++)
+            for (var i = 0; i < Ranges.Count; i++)
             {
-                var range = _ranges[i];
+                var range = Ranges[i];
 
                 if (i != 0)
                 {
-                    for (var ii = lastMax + 1; range.Min < ii; ii++)
+                    for (var ii = lastMax + 1; ii < range.Min; ii++)
                     {
                         yield return ii;
                     }
@@ -102,9 +102,9 @@ namespace RakDotNet
 
         public override IEnumerator<uint> GetEnumerator()
         {
-            foreach (var range in _ranges)
+            foreach (var range in Ranges)
             {
-                for (var i = range.Min; i < range.Max; i++)
+                for (var i = range.Min; i <= range.Max; i++)
                 {
                     yield return i;
                 }
@@ -113,9 +113,9 @@ namespace RakDotNet
 
         public override void Add(uint item)
         {
-            for (var i = 0; i < _ranges.Count; i++)
+            for (var i = 0; i < Ranges.Count; i++)
             {
-                var range = _ranges[i];
+                var range = Ranges[i];
 
                 if (range.Min == item + 1)
                 {
@@ -131,12 +131,12 @@ namespace RakDotNet
 
                         try
                         {
-                            var nextRange = _ranges[++i];
+                            var nextRange = Ranges[++i];
 
                             if (nextRange.Min == item + 1)
                             {
                                 range.Max = nextRange.Max;
-                                _ranges.Remove(nextRange);
+                                Ranges.Remove(nextRange);
                             }
                         }
                         catch (IndexOutOfRangeException)
@@ -151,7 +151,7 @@ namespace RakDotNet
                 }
                 else
                 {
-                    _ranges[i] = new Range<uint>
+                    Ranges[i] = new Range<uint>
                     {
                         Min = item,
                         Max = item
@@ -161,7 +161,7 @@ namespace RakDotNet
                 }
             }
 
-            _ranges.Add(new Range<uint>
+            Ranges.Add(new Range<uint>
             {
                 Min = item,
                 Max = item
@@ -170,15 +170,15 @@ namespace RakDotNet
 
         public override void Serialize(BitStream stream)
         {
-            stream.WriteUShortCompressed((ushort) _ranges.Count);
-            
-            foreach (var range in _ranges)
+            stream.WriteUShortCompressed((ushort) Ranges.Count);
+
+            foreach (var range in Ranges)
             {
                 var equalsMin = range.Min == range.Max;
 
                 stream.WriteBit(equalsMin);
                 stream.WriteUInt(range.Min);
-                
+
                 if (!equalsMin)
                     stream.WriteUInt(range.Max);
             }
@@ -186,7 +186,7 @@ namespace RakDotNet
 
         public override void Deserialize(BitStream stream)
         {
-            _ranges.Clear();
+            Ranges.Clear();
 
             var count = stream.ReadCompressedUShort();
 
@@ -197,7 +197,7 @@ namespace RakDotNet
                 var min = stream.ReadUInt();
                 var max = equalsMin ? min : stream.ReadUInt();
 
-                _ranges.Add(new Range<uint>
+                Ranges.Add(new Range<uint>
                 {
                     Min = min,
                     Max = max

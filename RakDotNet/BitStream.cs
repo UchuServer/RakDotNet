@@ -15,24 +15,8 @@ namespace RakDotNet
         public int BitCount => _bitsWritten;
         public int ReadPosition => _bitsRead;
 
-        public bool AllRead => _bitsRead >= _bitsWritten;
-        
-        public int Capacity
-        {
-            get => _buffer.Length;
-            set
-            {
-                if (_buffer.Length == value)
-                    return;
+        public bool AllRead => BitsToBytes(_bitsRead) >= _buffer.Length;
 
-                var buffer = new byte[value];
-
-                Buffer.BlockCopy(_buffer, 0, buffer, 0, _buffer.Length);
-
-                _buffer = buffer;
-            }
-        }
-        
         public BitStream()
         {
             _buffer = Array.Empty<byte>();
@@ -44,46 +28,34 @@ namespace RakDotNet
         {
             _buffer = buffer;
             _bitsRead = 0;
-            _bitsWritten = buffer.Length << 3;
+            _bitsWritten = BytesToBits(buffer.Length);
         }
+
+        public void IncreaseBuffer(int value)
+        {
+            if (_buffer.Length == value)
+                return;
+
+            var buffer = new byte[value];
+
+            Buffer.BlockCopy(_buffer, 0, buffer, 0, _buffer.Length);
+
+            _buffer = buffer;
+        }
+
+        #region Align
 
         public void AlignWrite()
         {
             _bitsWritten += 8 - (((_bitsWritten - 1) & 7) + 1);
         }
-        
+
         public void AlignRead()
         {
             _bitsRead += 8 - (((_bitsRead - 1) & 7) + 1);
         }
 
-        public void IncreaseBuffer(int bitCount)
-        {
-            if (bitCount <= 0)
-                throw new ArgumentException("Bit count must be >0", nameof(bitCount));
-
-            var newBitCount = bitCount + _bitsWritten;
-
-            if (newBitCount > 0 && (BytesToBits(_buffer.Length) - 1) >> 3 < (newBitCount - 1) >> 3)
-            {
-                newBitCount *= 2;
-
-                var temp = _buffer;
-
-                _buffer = new byte[BitsToBytes(newBitCount)];
-                
-                Buffer.BlockCopy(temp, 0, _buffer, 0, temp.Length);
-            }
-
-            if (newBitCount > BytesToBits(_buffer.Length))
-            {
-                var temp = _buffer;
-
-                _buffer = new byte[BitsToBytes(newBitCount)];
-                
-                Buffer.BlockCopy(temp, 0, _buffer, 0, temp.Length);
-            }
-        }
+        #endregion
 
         #region Bits
 
@@ -93,17 +65,16 @@ namespace RakDotNet
                 throw new ArgumentException("Bit count has to be >0", nameof(bitCount));
 
             var bytes = BitsToBytes(_bitsWritten + bitCount);
-            
+
             if (bytes > _buffer.Length)
-                Capacity = bytes;
+                IncreaseBuffer(bytes);
 
             var count = bitCount;
-            var offset = 0;
             var bitIndex = _bitsWritten & 7;
-            
-            while (count > 0)
+
+            for (var i = 0; count > 0; i++)
             {
-                var b = input[offset];
+                var b = input[i];
 
                 if (count < 8 && rightAligned)
                     b <<= 8 - count;
@@ -125,7 +96,6 @@ namespace RakDotNet
                 _bitsWritten += count >= 8 ? 8 : count;
 
                 count -= 8;
-                offset++;
             }
         }
 
@@ -136,22 +106,21 @@ namespace RakDotNet
 
             var output = new byte[BitsToBytes(bitCount)];
             var count = bitCount;
-            var offset = 0;
             var bitIndex = _bitsRead & 7;
 
-            while (count > 0)
+            for (var i = 0; count > 0; i++)
             {
-                output[offset] |= (byte) (_buffer[_bitsRead >> 3] << bitIndex);
+                output[i] |= (byte) (_buffer[_bitsRead >> 3] << bitIndex);
 
                 if (bitIndex > 0 && count > 8 - bitIndex)
-                    output[offset] |= (byte) (_buffer[(_bitsRead >> 3) + 1] >> (8 - bitIndex));
+                    output[i] |= (byte) (_buffer[(_bitsRead >> 3) + 1] >> (8 - bitIndex));
 
                 count -= 8;
 
                 if (count < 0)
                 {
                     if (rightAligned)
-                        output[offset] >>= -count;
+                        output[i] >>= -count;
 
                     _bitsRead += 8 + count;
                 }
@@ -159,8 +128,6 @@ namespace RakDotNet
                 {
                     _bitsRead += 8;
                 }
-
-                offset++;
             }
 
             return output;
@@ -171,7 +138,7 @@ namespace RakDotNet
             var bytes = BitsToBytes(_bitsWritten + 1);
 
             if (bytes > _buffer.Length)
-                Capacity = bytes;
+                IncreaseBuffer(bytes);
 
             var bitIndex = _bitsWritten & 7;
 
@@ -182,7 +149,7 @@ namespace RakDotNet
                 else
                     _buffer[_bitsWritten >> 3] |= (byte) (0x80 >> bitIndex);
             }
-            
+
             _bitsWritten++;
         }
 
@@ -191,44 +158,12 @@ namespace RakDotNet
             var res = _buffer[_bitsRead >> 3] & (0x80 >> (_bitsRead & 7));
 
             _bitsRead++;
-            
+
             return res > 0;
         }
-        
-        public bool TryReadBits(int bitCount, out byte[] output, bool rightAligned = true)
-        {
-            try
-            {
-                output = ReadBits(bitCount, rightAligned);
 
-                return true;
-            }
-            catch (IndexOutOfRangeException)
-            {
-                output = null;
-            }
-            
-            return false;
-        }
-
-        public bool TryReadBit(out bool bit)
-        {
-            try
-            {
-                bit = ReadBit();
-
-                return true;
-            }
-            catch (IndexOutOfRangeException)
-            {
-                bit = false;
-            }
-            
-            return false;
-        }
-        
         #endregion
-        
+
         #region Compressed
 
         public void WriteBitsCompressed(byte[] input, int bitCount, bool unsigned)
@@ -236,7 +171,7 @@ namespace RakDotNet
             for (var i = (bitCount >> 3) - 1; i > 0; i--)
             {
                 var match = input[i] == (unsigned ? 0x00 : 0xFF);
-                
+
                 WriteBit(match);
 
                 if (match) continue;
@@ -247,7 +182,7 @@ namespace RakDotNet
             }
 
             var match2 = (input[0] & 0xF0) == (unsigned ? 0x00 : 0xF0);
-            
+
             WriteBit(match2);
 
             WriteBits(new[] {input[0]}, match2 ? 4 : 8);
@@ -256,7 +191,7 @@ namespace RakDotNet
         public byte[] ReadCompressedBits(int bitCount, bool unsigned)
         {
             var output = new byte[BitsToBytes(bitCount)];
-            
+
             for (var i = (bitCount >> 3) - 1; i > 0; i--)
             {
                 if (ReadBit())
@@ -278,21 +213,21 @@ namespace RakDotNet
 
             if (match2)
                 output[0] |= (byte) (unsigned ? 0x00 : 0xF0);
-            
+
             return output;
         }
 
         #endregion
 
         #region Bytes
-        
+
         public void Write(byte[] input)
         {
             if (input.Length == 0) return;
 
             if ((_bitsWritten & 7) == 0)
             {
-                Capacity = BitsToBytes(_bitsWritten) + input.Length;
+                IncreaseBuffer(BitsToBytes(_bitsWritten) + input.Length);
 
                 Buffer.BlockCopy(input, 0, _buffer, BitsToBytes(_bitsWritten), input.Length);
 
@@ -313,7 +248,7 @@ namespace RakDotNet
                 return ReadBits(BytesToBits(byteCount));
 
             var buffer = new byte[byteCount];
-                
+
             Buffer.BlockCopy(_buffer, _bitsRead >> 3, buffer, 0, byteCount);
 
             _bitsRead += byteCount << 3;
@@ -326,34 +261,18 @@ namespace RakDotNet
 
         public byte[] ReadCompressed(int byteCount, bool unsigned)
             => ReadCompressedBits(BytesToBits(byteCount), unsigned);
-        
-        public bool TryRead(int byteCount, out byte[] output)
-        {
-            try
-            {
-                output = Read(byteCount);
-
-                return true;
-            }
-            catch (IndexOutOfRangeException)
-            {
-                output = null;
-            }
-
-            return false;
-        }
 
         #endregion
-        
+
         #region Read/Write
 
         #region int8
 
         public void WriteSByte(sbyte input)
-            => Write(BitConverter.GetBytes(input));
+            => Write(new[] {(byte) input});
 
         public void WriteSByteCompressed(sbyte input)
-            => WriteCompressed(BitConverter.GetBytes(input), false);
+            => WriteCompressed(new[] {(byte) input}, false);
 
         public void WriteInt8(sbyte input)
             => WriteSByte(input);
@@ -374,14 +293,14 @@ namespace RakDotNet
             => ReadCompressedSByte();
 
         #endregion
-        
+
         #region uint8
 
         public void WriteByte(byte input)
-            => Write(BitConverter.GetBytes(input));
+            => Write(new[] {input});
 
         public void WriteByteCompressed(byte input)
-            => WriteCompressed(BitConverter.GetBytes(input), true);
+            => WriteCompressed(new[] {input}, true);
 
         public void WriteUInt8(byte input)
             => WriteByte(input);
@@ -400,11 +319,11 @@ namespace RakDotNet
 
         public byte ReadCompressedUInt8()
             => ReadCompressedByte();
-        
+
         #endregion
 
         #region int16
-        
+
         public void WriteShort(short input)
             => Write(BitConverter.GetBytes(input));
 
@@ -428,9 +347,9 @@ namespace RakDotNet
 
         public short ReadCompressedInt16()
             => ReadCompressedShort();
-        
+
         #endregion
-        
+
         #region uint16
 
         public void WriteUShort(ushort input)
@@ -468,7 +387,7 @@ namespace RakDotNet
 
         public char ReadCompressedChar()
             => (char) ReadCompressedUShort();
-        
+
         #endregion
 
         #region int32
@@ -496,7 +415,7 @@ namespace RakDotNet
 
         public int ReadCompressedInt32()
             => ReadCompressedInt();
-        
+
         #endregion
 
         #region uint32
@@ -562,7 +481,7 @@ namespace RakDotNet
 
         public void WriteULongCompressed(ulong input)
             => WriteCompressed(BitConverter.GetBytes(input), true);
-        
+
         public void WriteUInt64(ulong input)
             => WriteULong(input);
 
@@ -630,7 +549,7 @@ namespace RakDotNet
             => BitConverter.ToBoolean(ReadCompressed(sizeof(bool), true), 0);
 
         #endregion
-        
+
         #endregion
 
         #region Serializables
@@ -664,26 +583,27 @@ namespace RakDotNet
         {
             var end = false;
             var str = new StringBuilder();
-            
+
             for (var i = 0; i < length; i++)
             {
                 var ch = wide ? ReadChar() : (char) ReadByte();
 
+                if (end) continue;
+
                 if (ch == 0)
                 {
                     end = true;
+                    continue;
                 }
-                else if (!end)
-                {
-                    str.Append(ch);
-                }
+
+                str.Append(ch);
             }
 
             return str.ToString();
         }
 
         #endregion
-        
+
         #region Utilities
 
         public static int BitsToBytes(int bits)

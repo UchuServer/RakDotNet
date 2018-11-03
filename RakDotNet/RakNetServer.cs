@@ -9,28 +9,30 @@ namespace RakDotNet
 {
     public class RakNetServer
     {
-        public event Func<byte[], IPEndPoint, Task> PacketReceived;
-        public event Func<IPEndPoint, Task> NewConnection;
-        public event Func<IPEndPoint, Task> Disconnection;
+        public event Action<IPEndPoint, byte[]> PacketReceived;
+        public event Action<IPEndPoint> NewConnection;
+        public event Action<IPEndPoint> Disconnection;
 
         private readonly UdpClient _udp;
         private readonly Dictionary<IPEndPoint, ReliabilityLayer> _connections;
         private readonly byte[] _password;
         private readonly IPEndPoint _endpoint;
-        private readonly DateTimeOffset _startTime;
+        private readonly long _startTime;
 
-        private Task _task;
         private bool _active;
 
-        public DateTimeOffset StartTime => _startTime;
+        public RakNetServer(int port, string password)
+            : this(port, BitStream.ToBytes(password))
+        {
+        }
 
         public RakNetServer(int port, byte[] password)
         {
-            _udp = new UdpClient(port);
+            _udp = new UdpClient(new IPEndPoint(IPAddress.Any, port));
             _connections = new Dictionary<IPEndPoint, ReliabilityLayer>();
             _password = password;
             _endpoint = (IPEndPoint) _udp.Client.LocalEndPoint;
-            _startTime = DateTimeOffset.Now;
+            _startTime = Environment.TickCount;
             _active = false;
         }
 
@@ -41,15 +43,13 @@ namespace RakDotNet
 
             _active = true;
 
-            _task = Task.Run(async () =>
+            Task.Run(async () =>
             {
                 while (_active)
                 {
                     var datagram = await _udp.ReceiveAsync().ConfigureAwait(false);
                     var data = datagram.Buffer;
                     var endpoint = datagram.RemoteEndPoint;
-                    
-                    Console.WriteLine("got packet");
 
                     if (data.Length <= 2)
                     {
@@ -71,47 +71,56 @@ namespace RakDotNet
                     {
                         if (!_connections.TryGetValue(endpoint, out var layer)) continue;
 
-                        try
+                        foreach (var packet in layer.HandleDatagram(data))
                         {
-                            foreach (var packet in layer.HandleDatagram(data))
+                            var stream = new BitStream(packet);
+
+                            switch ((MessageIdentifiers) stream.ReadByte())
                             {
-                                var stream = new BitStream(packet);
-
-                                var id = (MessageIdentifiers) stream.ReadByte();
-
-                                switch (id)
-                                {
-                                    case MessageIdentifiers.ConnectionRequest:
-                                        _handleConnectionRequest(stream, endpoint);
-                                        break;
-                                    case MessageIdentifiers.InternalPing:
-                                        _handleInternalPing(stream, endpoint);
-                                        break;
-                                    case MessageIdentifiers.NewIncomingConnection:
-                                        if (NewConnection != null)
-                                            await NewConnection(endpoint).ConfigureAwait(false);
-                                        break;
-                                    case MessageIdentifiers.DisconnectionNotification:
-                                        _connections[endpoint].StopSendLoop();
-                                        _connections.Remove(endpoint);
-                                        
-                                        if (Disconnection != null)
-                                            await Disconnection(endpoint).ConfigureAwait(false);
-                                        break;
-                                    case MessageIdentifiers.UserPacketEnum:
-                                        if (PacketReceived != null)
-                                            await PacketReceived(data, endpoint).ConfigureAwait(false);
-                                        break;
-                                }
+                                case MessageIdentifiers.ConnectionRequest:
+                                    _handleConnectionRequest(stream, endpoint);
+                                    break;
+                                case MessageIdentifiers.InternalPing:
+                                    _handleInternalPing(stream, endpoint);
+                                    break;
+                                case MessageIdentifiers.NewIncomingConnection:
+                                    NewConnection?.Invoke(endpoint);
+                                    break;
+                                case MessageIdentifiers.DisconnectionNotification:
+                                    _handleDisconnection(endpoint);
+                                    break;
+                                case MessageIdentifiers.UserPacketEnum:
+                                    PacketReceived?.Invoke(endpoint, data);
+                                    break;
                             }
-                        }
-                        catch (Exception e)
-                        {
-                            Console.WriteLine(e);
                         }
                     }
                 }
             });
+
+            Task.Run(async () =>
+            {
+                while (_active)
+                {
+                    await Task.Delay(30000);
+
+                    var dead = _connections.Keys.Where(k =>
+                    {
+                        var conn = _connections[k];
+
+                        return conn.Resends && conn.LastAckTime < Environment.TickCount / 1000f - 10f;
+                    });
+
+                    foreach (var key in dead) CloseConnection(key);
+                }
+            });
+        }
+
+        public void Stop()
+        {
+            _active = false;
+
+            foreach (var endpoint in _connections.Keys) CloseConnection(endpoint);
         }
 
         public void Send(BitStream stream, IPEndPoint endpoint,
@@ -133,17 +142,29 @@ namespace RakDotNet
 
             foreach (var endpoint in recipients)
             {
-                if (!_connections.ContainsKey(endpoint))
-                    continue;
+                if (!_connections.ContainsKey(endpoint)) continue;
 
                 _connections[endpoint].Send(data, reliability);
             }
         }
 
+        public void CloseConnection(IPEndPoint endpoint)
+        {
+            if (!_connections.ContainsKey(endpoint))
+                throw new InvalidOperationException("Client is not connected");
+
+            Send(new[] {(byte) MessageIdentifiers.DisconnectionNotification}, endpoint);
+
+            _connections[endpoint].StopSendLoop();
+            _connections.Remove(endpoint);
+
+            Disconnection?.Invoke(endpoint);
+        }
+
         private void _handleConnectionRequest(BitStream stream, IPEndPoint endpoint)
         {
             var password = stream.ReadBits(stream.BitCount - stream.ReadPosition);
-            
+
             if (password.SequenceEqual(_password))
             {
                 var res = new BitStream();
@@ -169,9 +190,17 @@ namespace RakDotNet
 
             pong.WriteByte((byte) MessageIdentifiers.ConnectedPong);
             pong.WriteUInt(time);
-            pong.WriteUInt((uint) (DateTimeOffset.Now.ToUnixTimeMilliseconds() - _startTime.ToUnixTimeMilliseconds()));
+            pong.WriteUInt((uint) (Environment.TickCount - _startTime));
 
             Send(pong, endpoint);
+        }
+
+        private void _handleDisconnection(IPEndPoint endpoint)
+        {
+            _connections[endpoint].StopSendLoop();
+            _connections.Remove(endpoint);
+
+            Disconnection?.Invoke(endpoint);
         }
     }
 }

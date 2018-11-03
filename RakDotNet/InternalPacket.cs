@@ -1,5 +1,3 @@
-using System;
-
 namespace RakDotNet
 {
     public class InternalPacket : ISerializable
@@ -8,9 +6,9 @@ namespace RakDotNet
 
         public PacketReliability Reliability { get; set; }
 
-        public byte OrderingChannel { get; set; } 
+        public byte OrderingChannel { get; set; }
         public uint OrderingIndex { get; set; }
-        
+
         public bool SplitPacket { get; set; }
         public ushort SplitPacketId { get; set; }
         public uint SplitPacketIndex { get; set; }
@@ -32,25 +30,25 @@ namespace RakDotNet
             }
 
             stream.WriteBit(SplitPacket);
-            
+
             if (SplitPacket)
             {
                 stream.WriteUShort(SplitPacketId);
                 stream.WriteUIntCompressed(SplitPacketIndex);
                 stream.WriteUIntCompressed(SplitPacketCount);
             }
-            
+
             stream.WriteUShortCompressed((ushort) BitStream.BytesToBits(Data.Length));
-            
+
             stream.AlignWrite();
-            
+
             stream.Write(Data);
         }
-        
+
         public void Deserialize(BitStream stream)
         {
             MessageNumber = stream.ReadUInt();
-            
+
             Reliability = (PacketReliability) stream.ReadBits(3)[0];
 
             if (Reliability == PacketReliability.UnreliableSequenced ||
@@ -62,7 +60,7 @@ namespace RakDotNet
             }
 
             SplitPacket = stream.ReadBit();
-            
+
             if (SplitPacket)
             {
                 SplitPacketId = stream.ReadUShort();
@@ -71,7 +69,7 @@ namespace RakDotNet
             }
 
             var length = stream.ReadCompressedUShort();
-            
+
             stream.AlignRead();
 
             Data = stream.Read(BitStream.BitsToBytes(length));

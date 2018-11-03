@@ -2,6 +2,8 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RakDotNet", "RakDotNet\RakDotNet.csproj", "{2F68FE17-EBF6-4F98-9040-B71F7C42A876}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Example", "Example\Example.csproj", "{812081CE-381A-4831-A176-7B2379A2749A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -12,5 +14,9 @@ Global
 		{2F68FE17-EBF6-4F98-9040-B71F7C42A876}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2F68FE17-EBF6-4F98-9040-B71F7C42A876}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2F68FE17-EBF6-4F98-9040-B71F7C42A876}.Release|Any CPU.Build.0 = Release|Any CPU
+		{812081CE-381A-4831-A176-7B2379A2749A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{812081CE-381A-4831-A176-7B2379A2749A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{812081CE-381A-4831-A176-7B2379A2749A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{812081CE-381A-4831-A176-7B2379A2749A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
