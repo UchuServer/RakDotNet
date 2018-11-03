@@ -3,14 +3,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace RakDotNet
 {
     public class ReliabilityLayer
     {
-        public const int MtuSize = 1228;
-        public const int UdpHeaderSize = 28;
+        private const int MtuSize = 1228;
+        private const int UdpHeaderSize = 28;
 
         private readonly UdpClient _udp;
         private readonly IPEndPoint _endpoint;
@@ -19,9 +20,10 @@ namespace RakDotNet
         private readonly List<uint> _lastReliabilityReceived;
         private readonly Dictionary<uint, byte[]> _outOfOrderPackets;
         private readonly Dictionary<uint, byte[][]> _splitPacketQueue;
-        private readonly List<Packet> _sends;
+        private readonly List<InternalPacket> _sends;
         private readonly Dictionary<uint, Resend> _resends;
 
+        private Task _task;
         private bool _active;
         private DateTimeOffset _lastAckTime;
         private uint _splitPacketId;
@@ -42,6 +44,7 @@ namespace RakDotNet
         public DateTimeOffset LastAckTime => _lastAckTime;
         public IPEndPoint Endpoint => _endpoint;
         public int Sent => _sent;
+        public bool Active => _active;
 
         public ReliabilityLayer(UdpClient udp, IPEndPoint endpoint)
         {
@@ -52,7 +55,7 @@ namespace RakDotNet
             _lastReliabilityReceived = new List<uint>();
             _outOfOrderPackets = new Dictionary<uint, byte[]>();
             _splitPacketQueue = new Dictionary<uint, byte[][]>();
-            _sends = new List<Packet>();
+            _sends = new List<InternalPacket>();
             _resends = new Dictionary<uint, Resend>();
             _active = false;
         }
@@ -77,8 +80,8 @@ namespace RakDotNet
                 }
                 else
                 {
-                    var alpha = 0.125f;
-                    var beta = 0.25f;
+                    const float alpha = 0.125f;
+                    const float beta = 0.25f;
 
                     _roundTripTimeVariation = (long) ((1 - beta) * _roundTripTimeVariation +
                                                       beta * Math.Abs(_smoothedRoundTripTime - roundTripTime));
@@ -132,12 +135,12 @@ namespace RakDotNet
                 _sent = 0;
                 _lastAckTime = DateTimeOffset.Now;
             }
-
+            
             if (stream.AllRead)
                 yield break;
 
             if (stream.ReadBit())
-                _remoteSystemTime = DateTimeOffset.FromUnixTimeMilliseconds((long) stream.ReadULong());
+                _remoteSystemTime = DateTimeOffset.FromUnixTimeMilliseconds(stream.ReadUInt());
 
             while (!stream.AllRead)
             {
@@ -169,18 +172,17 @@ namespace RakDotNet
                     else
                         continue;
                 }
-
+                
                 if (internalPacket.Reliability == PacketReliability.ReliableOrdered)
                 {
                     if (!_lastReliabilityReceived.Contains(internalPacket.MessageNumber))
                     {
-                        _lastReliabilityReceived.RemoveAt(0);
                         _lastReliabilityReceived.Add(internalPacket.MessageNumber);
                     }
                     else
                         continue;
                 }
-
+                
                 if (internalPacket.Reliability == PacketReliability.UnreliableSequenced)
                 {
                     if (internalPacket.OrderingIndex >= _sequencedReadIndex)
@@ -210,82 +212,91 @@ namespace RakDotNet
                         _outOfOrderPackets[internalPacket.OrderingIndex] = internalPacket.Data;
                     }
                 }
-
+                
                 yield return internalPacket.Data;
             }
         }
 
-        public async Task StartSendLoopAsync()
+        public void StartSendLoop()
         {
             _active = true;
 
-            while (_active)
+            _task = Task.Run(async () =>
             {
-                await Task.Delay(30);
-
-                foreach (var entry in _resends)
+                try
                 {
-                    var messageNum = entry.Key;
-                    var resend = entry.Value;
+                    while (_active)
+                    {
+                        await Task.Delay(30);
 
-                    if (resend.Time > DateTimeOffset.Now)
-                        continue;
-
-                    if (_sent >= _congestionWindow)
-                        break;
-
-                    _sent++;
-
-                    resend.Packet.MessageNumber = messageNum;
-
-                    await _sendPacketAsync(resend.Packet).ConfigureAwait(false);
-
-                    if (resend.Packet.Reliability == PacketReliability.Reliable ||
-                        resend.Packet.Reliability == PacketReliability.ReliableOrdered)
-                        _resends[messageNum] = new Resend
+                        foreach (var entry in _resends)
                         {
-                            Time = DateTimeOffset.Now.AddMilliseconds(_retransmissionTimeout),
-                            Packet = resend.Packet
-                        };
-                }
+                            var messageNum = entry.Key;
+                            var resend = entry.Value;
 
-                while (_sends.Count > 0)
-                {
-                    if (_sent > _congestionWindow)
-                        break;
+                            if (resend.Time > DateTimeOffset.Now)
+                                continue;
 
-                    var packet = _sends[0];
-                    _sends.RemoveAt(0);
-                    _sent++;
+                            if (_sent >= _congestionWindow)
+                                break;
 
-                    var messageNum = _sendIndex++;
+                            _sent++;
 
-                    packet.MessageNumber = messageNum;
+                            resend.Packet.MessageNumber = messageNum;
 
-                    await _sendPacketAsync(packet).ConfigureAwait(false);
+                            await _sendPacketAsync(resend.Packet).ConfigureAwait(false);
 
-                    if (packet.Reliability == PacketReliability.Reliable ||
-                        packet.Reliability == PacketReliability.ReliableOrdered)
-                        _resends[messageNum] = new Resend
+                            if (resend.Packet.Reliability == PacketReliability.Reliable ||
+                                resend.Packet.Reliability == PacketReliability.ReliableOrdered)
+                                _resends[messageNum] = new Resend
+                                {
+                                    Time = DateTimeOffset.Now.AddMilliseconds(_retransmissionTimeout),
+                                    Packet = resend.Packet
+                                };
+                        }
+
+                        while (_sends.Count > 0)
                         {
-                            Time = DateTimeOffset.Now.AddMilliseconds(_retransmissionTimeout),
-                            Packet = packet
-                        };
-                }
+                            if (_sent > _congestionWindow)
+                                break;
 
-                if (_acks.Count > 0)
+                            var packet = _sends[0];
+                            _sends.RemoveAt(0);
+                            _sent++;
+
+                            var messageNum = _sendIndex++;
+
+                            packet.MessageNumber = messageNum;
+
+                            await _sendPacketAsync(packet).ConfigureAwait(false);
+
+                            if (packet.Reliability == PacketReliability.Reliable ||
+                                packet.Reliability == PacketReliability.ReliableOrdered)
+                                _resends[messageNum] = new Resend
+                                {
+                                    Time = DateTimeOffset.Now.AddMilliseconds(_retransmissionTimeout),
+                                    Packet = packet
+                                };
+                        }
+
+                        if (_acks.Count <= 0) continue;
+
+                        var ack = new BitStream();
+
+                        ack.WriteBit(true);
+                        ack.WriteUInt((uint) _remoteSystemTime.ToUnixTimeMilliseconds());
+                        ack.WriteSerializable(_acks);
+
+                        _acks.Clear();
+
+                        await _udp.SendAsync(ack.BaseBuffer, ack.BaseBuffer.Length, _endpoint).ConfigureAwait(false);
+                    }
+                }
+                catch (Exception e)
                 {
-                    var ack = new BitStream();
-
-                    ack.WriteBit(true);
-                    ack.WriteUInt((uint) _remoteSystemTime.ToUnixTimeMilliseconds());
-                    ack.WriteSerializable(_acks);
-
-                    _acks.Clear();
-
-                    await _udp.SendAsync(ack.BaseBuffer, ack.BaseBuffer.Length, _endpoint).ConfigureAwait(false);
+                    Console.WriteLine(e);
                 }
-            }
+            });
         }
 
         public void StopSendLoop()
@@ -293,7 +304,7 @@ namespace RakDotNet
             _active = false;
         }
 
-        private async Task _sendPacketAsync(Packet packet)
+        private async Task _sendPacketAsync(InternalPacket packet)
         {
             var stream = new BitStream();
 
@@ -313,28 +324,8 @@ namespace RakDotNet
 
             var time = DateTimeOffset.Now.ToUnixTimeMilliseconds() - _startTime.ToUnixTimeMilliseconds();
             stream.WriteUInt((uint) time);
-            stream.WriteUInt(packet.MessageNumber);
-            stream.WriteBits(new[] {(byte) packet.Reliability}, 3);
-
-            if (packet.Reliability == PacketReliability.UnreliableSequenced ||
-                packet.Reliability == PacketReliability.ReliableOrdered)
-            {
-                stream.WriteBits(new[] {packet.OrderingChannel}, 5);
-                stream.WriteUInt(packet.OrderingIndex);
-            }
-
-            stream.WriteBit(packet.SplitPacket);
-
-            if (packet.SplitPacket)
-            {
-                stream.WriteUShort(packet.SplitPacketId);
-                stream.WriteUIntCompressed(packet.SplitPacketIndex);
-                stream.WriteUIntCompressed(packet.SplitPacketCount);
-            }
-
-            stream.WriteUShortCompressed((ushort) BitStream.BytesToBits(packet.Data.Length));
-            stream.AlignWrite();
-            stream.Write(packet.Data);
+            
+            stream.WriteSerializable(packet);
 
             await _udp.SendAsync(stream.BaseBuffer, stream.BaseBuffer.Length, _endpoint).ConfigureAwait(false);
         }
@@ -365,7 +356,7 @@ namespace RakDotNet
 
                 foreach (var chunk in chunks)
                 {
-                    _sends.Add(new Packet
+                    _sends.Add(new InternalPacket
                     {
                         Data = chunk,
                         Reliability = reliability,
@@ -378,7 +369,7 @@ namespace RakDotNet
                 }
             }
             else
-                _sends.Add(new Packet
+                _sends.Add(new InternalPacket
                 {
                     Data = data,
                     Reliability = reliability,

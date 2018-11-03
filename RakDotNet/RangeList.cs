@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace RakDotNet
 {
@@ -12,7 +11,7 @@ namespace RakDotNet
         public T Max { get; set; }
     }
 
-    public abstract class RangeList<T> : Serializable, IEnumerable<Range<T>>
+    public abstract class RangeList<T> : ISerializable, IEnumerable<Range<T>>
         where T : struct
     {
         protected readonly List<Range<T>> _ranges;
@@ -34,6 +33,10 @@ namespace RakDotNet
 
         IEnumerator IEnumerable.GetEnumerator()
             => GetEnumerator();
+
+        public abstract void Serialize(BitStream stream);
+
+        public abstract void Deserialize(BitStream stream);
     }
 
     public class UIntRangeList : RangeList<uint>

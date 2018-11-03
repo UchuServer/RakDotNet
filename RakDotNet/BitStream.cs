@@ -1,4 +1,6 @@
 using System;
+using System.Linq;
+using System.Text;
 
 namespace RakDotNet
 {
@@ -161,8 +163,8 @@ namespace RakDotNet
             var res = _buffer[_bitsRead >> 3] & (0x80 >> (_bitsRead & 7));
 
             _bitsRead++;
-
-            return res == 1;
+            
+            return res > 0;
         }
         
         public bool TryReadBits(int bitCount, out byte[] output, bool rightAligned = true)
@@ -204,17 +206,16 @@ namespace RakDotNet
         public void WriteBitsCompressed(byte[] input, int bitCount, bool unsigned)
         {
             for (var i = (bitCount >> 3) - 1; i > 0; i--)
-            {   
+            {
                 var match = input[i] == (unsigned ? 0x00 : 0xFF);
                 
                 WriteBit(match);
-                
-                if (!match)
-                {
-                    WriteBits(input, (i + 1) << 3);
 
-                    return;
-                }
+                if (match) continue;
+
+                WriteBits(input, (i + 1) << 3);
+
+                return;
             }
 
             var match2 = (input[0] & 0xF0) == (unsigned ? 0x00 : 0xF0);
@@ -240,7 +241,17 @@ namespace RakDotNet
                 }
             }
 
-            return _bitsRead + 1 > _bitsWritten ? output : ReadBits(ReadBit() ? 4 : 8);
+            if (_bitsRead + 1 > _bitsWritten)
+                return output;
+
+            var match2 = ReadBit();
+
+            output[0] = ReadBits(match2 ? 4 : 8)[0];
+
+            if (match2)
+                output[0] |= (byte) (unsigned ? 0x00 : 0xF0);
+            
+            return output;
         }
 
         #endregion
@@ -253,15 +264,15 @@ namespace RakDotNet
 
             if ((_bitsWritten & 7) == 0)
             {
-                Capacity += input.Length;
-                
+                Capacity = BitsToBytes(_bitsWritten) + input.Length;
+
                 Buffer.BlockCopy(input, 0, _buffer, BitsToBytes(_bitsWritten), input.Length);
 
                 _bitsWritten += BytesToBits(_buffer.Length);
             }
             else
             {
-                WriteBits(input, BytesToBits(_buffer.Length));
+                WriteBits(input, BytesToBits(input.Length));
             }
         }
 
@@ -308,6 +319,34 @@ namespace RakDotNet
         
         #region Read/Write
 
+        #region int8
+
+        public void WriteSByte(sbyte input)
+            => Write(BitConverter.GetBytes(input));
+
+        public void WriteSByteCompressed(sbyte input)
+            => WriteCompressed(BitConverter.GetBytes(input), false);
+
+        public void WriteInt8(sbyte input)
+            => WriteSByte(input);
+
+        public void WriteInt8Compressed(sbyte input)
+            => WriteSByteCompressed(input);
+
+        public sbyte ReadSByte()
+            => (sbyte) Read(sizeof(sbyte))[0];
+
+        public sbyte ReadCompressedSByte()
+            => (sbyte) ReadCompressed(sizeof(sbyte), false)[0];
+
+        public sbyte ReadInt8()
+            => ReadSByte();
+
+        public sbyte ReadCompressedInt8()
+            => ReadCompressedSByte();
+
+        #endregion
+        
         #region uint8
 
         public void WriteByte(byte input)
@@ -378,6 +417,12 @@ namespace RakDotNet
         public void WriteUInt16Compressed(ushort input)
             => WriteUShortCompressed(input);
 
+        public void WriteChar(char input)
+            => WriteUShort(input);
+
+        public void WriteCharCompressed(char input)
+            => WriteUShortCompressed(input);
+
         public ushort ReadUShort()
             => BitConverter.ToUInt16(Read(sizeof(ushort)), 0);
 
@@ -389,6 +434,12 @@ namespace RakDotNet
 
         public ushort ReadCompressedUInt16()
             => ReadCompressedUShort();
+
+        public char ReadChar()
+            => (char) ReadUShort();
+
+        public char ReadCompressedChar()
+            => (char) ReadCompressedUShort();
         
         #endregion
 
@@ -535,25 +586,90 @@ namespace RakDotNet
             => BitConverter.ToSingle(ReadCompressed(sizeof(float), false), 0);
 
         #endregion
+
+        #region bool
+
+        public void WriteBool(bool input)
+            => Write(BitConverter.GetBytes(input));
+
+        public void WriteBoolCompressed(bool input)
+            => WriteCompressed(BitConverter.GetBytes(input), true);
+
+        public bool ReadBool()
+            => BitConverter.ToBoolean(Read(sizeof(bool)), 0);
+
+        public bool ReadCompressedBool()
+            => BitConverter.ToBoolean(ReadCompressed(sizeof(bool), true), 0);
+
+        #endregion
         
         #endregion
 
         #region Serializables
 
         public void WriteSerializable<T>(T input)
-            where T : Serializable
+            where T : ISerializable
             => input.Serialize(this);
 
         public void ReadSerializable<T>(T output)
-            where T : Serializable
+            where T : ISerializable
             => output.Deserialize(this);
 
         #endregion
 
+        #region Other
+
+        public void WriteString(string input, int length = 33, bool wide = false)
+        {
+            for (var i = 0; i < length; i++)
+            {
+                var ch = input.Length > i ? input[i] : (char) 0;
+
+                if (wide)
+                    WriteChar(ch);
+                else
+                    WriteByte((byte) ch);
+            }
+        }
+
+        public string ReadString(int length = 33, bool wide = false)
+        {
+            var end = false;
+            var str = new StringBuilder();
+            
+            for (var i = 0; i < length; i++)
+            {
+                var ch = wide ? ReadChar() : (char) ReadByte();
+
+                if (ch == 0)
+                {
+                    end = true;
+                }
+                else if (!end)
+                {
+                    str.Append(ch);
+                }
+            }
+
+            return str.ToString();
+        }
+
+        #endregion
+        
+        #region Utilities
+
         public static int BitsToBytes(int bits)
-            => (int) Math.Ceiling(bits / (double) sizeof(byte));
+            => (int) Math.Ceiling(bits / 8d);
 
         public static int BytesToBits(int bytes)
             => bytes * 8;
+
+        public static byte[] ToBytes(string input)
+            => input.Select(c => (byte) c).ToArray();
+
+        public static string ToString(byte[] input)
+            => string.Join("", input.Select(c => (char) c));
+
+        #endregion
     }
 }

@@ -19,78 +19,99 @@ namespace RakDotNet
         private readonly IPEndPoint _endpoint;
         private readonly DateTimeOffset _startTime;
 
+        private Task _task;
         private bool _active;
 
         public DateTimeOffset StartTime => _startTime;
 
-        public RakNetServer(IPEndPoint endpoint, byte[] password)
+        public RakNetServer(int port, byte[] password)
         {
-            _udp = new UdpClient(endpoint);
+            _udp = new UdpClient(port);
             _connections = new Dictionary<IPEndPoint, ReliabilityLayer>();
             _password = password;
-            _endpoint = endpoint;
+            _endpoint = (IPEndPoint) _udp.Client.LocalEndPoint;
             _startTime = DateTimeOffset.Now;
             _active = false;
         }
 
-        public async Task StartAsync()
+        public void Start()
         {
             if (_active)
                 throw new InvalidOperationException("Already active");
 
             _active = true;
 
-            while (_active)
+            _task = Task.Run(async () =>
             {
-                var datagram = await _udp.ReceiveAsync().ConfigureAwait(false);
-                var data = datagram.Buffer;
-                var endpoint = datagram.RemoteEndPoint;
-
-                if (data.Length <= 2)
+                while (_active)
                 {
-                    if (data[0] != (byte) MessageIdentifiers.OpenConnectionRequest) continue;
+                    var datagram = await _udp.ReceiveAsync().ConfigureAwait(false);
+                    var data = datagram.Buffer;
+                    var endpoint = datagram.RemoteEndPoint;
+                    
+                    Console.WriteLine("got packet");
 
-                    if (!_connections.ContainsKey(endpoint))
-                        _connections[endpoint] = new ReliabilityLayer(_udp, endpoint);
-
-                    var pkt = new byte[] {(byte) MessageIdentifiers.OpenConnectionReply, 0};
-
-                    await _udp.SendAsync(pkt, pkt.Length, endpoint).ConfigureAwait(false);
-                }
-                else
-                {
-                    if (!_connections.TryGetValue(endpoint, out var layer)) continue;
-
-                    foreach (var packet in layer.HandleDatagram(data))
+                    if (data.Length <= 2)
                     {
-                        var stream = new BitStream(packet);
+                        if (data[0] != (byte) MessageIdentifiers.OpenConnectionRequest) continue;
 
-                        var id = (MessageIdentifiers) stream.ReadByte();
+                        if (!_connections.ContainsKey(endpoint))
+                            _connections[endpoint] = new ReliabilityLayer(_udp, endpoint);
 
-                        switch (id)
+                        var conn = _connections[endpoint];
+
+                        if (!conn.Active)
+                            conn.StartSendLoop();
+
+                        var pkt = new byte[] {(byte) MessageIdentifiers.OpenConnectionReply, 0};
+
+                        await _udp.SendAsync(pkt, pkt.Length, endpoint).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        if (!_connections.TryGetValue(endpoint, out var layer)) continue;
+
+                        try
                         {
-                            case MessageIdentifiers.ConnectionRequest:
-                                _handleConnectionRequest(stream, endpoint);
-                                break;
-                            case MessageIdentifiers.InternalPing:
-                                _handleInternalPing(stream, endpoint);
-                                break;
-                            case MessageIdentifiers.NewIncomingConnection:
-                                if (NewConnection != null)
-                                    await NewConnection(endpoint).ConfigureAwait(false);
-                                break;
-                            case MessageIdentifiers.DisconnectionNotification:
-                                if (Disconnection != null)
-                                    await Disconnection(endpoint).ConfigureAwait(false);
-                                break;
-                            case MessageIdentifiers.UserPacketEnum:
-                                if (PacketReceived != null)
-                                    await PacketReceived(data, endpoint).ConfigureAwait(false);
-                                break;
+                            foreach (var packet in layer.HandleDatagram(data))
+                            {
+                                var stream = new BitStream(packet);
+
+                                var id = (MessageIdentifiers) stream.ReadByte();
+
+                                switch (id)
+                                {
+                                    case MessageIdentifiers.ConnectionRequest:
+                                        _handleConnectionRequest(stream, endpoint);
+                                        break;
+                                    case MessageIdentifiers.InternalPing:
+                                        _handleInternalPing(stream, endpoint);
+                                        break;
+                                    case MessageIdentifiers.NewIncomingConnection:
+                                        if (NewConnection != null)
+                                            await NewConnection(endpoint).ConfigureAwait(false);
+                                        break;
+                                    case MessageIdentifiers.DisconnectionNotification:
+                                        _connections[endpoint].StopSendLoop();
+                                        _connections.Remove(endpoint);
+                                        
+                                        if (Disconnection != null)
+                                            await Disconnection(endpoint).ConfigureAwait(false);
+                                        break;
+                                    case MessageIdentifiers.UserPacketEnum:
+                                        if (PacketReceived != null)
+                                            await PacketReceived(data, endpoint).ConfigureAwait(false);
+                                        break;
+                                }
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine(e);
                         }
                     }
                 }
-            }
+            });
         }
 
         public void Send(BitStream stream, IPEndPoint endpoint,
@@ -122,8 +143,8 @@ namespace RakDotNet
         private void _handleConnectionRequest(BitStream stream, IPEndPoint endpoint)
         {
             var password = stream.ReadBits(stream.BitCount - stream.ReadPosition);
-
-            if (password == _password)
+            
+            if (password.SequenceEqual(_password))
             {
                 var res = new BitStream();
 
@@ -134,7 +155,7 @@ namespace RakDotNet
                 res.Write(_endpoint.Address.GetAddressBytes());
                 res.WriteUShort((ushort) _endpoint.Port);
 
-                Send(res, endpoint, PacketReliability.Reliable);
+                // Send(res, endpoint, PacketReliability.Reliable);
             }
             else
                 throw new NotImplementedException();

@@ -2,7 +2,7 @@ using System;
 
 namespace RakDotNet
 {
-    public class InternalPacket : Serializable
+    public class InternalPacket : ISerializable
     {
         public uint MessageNumber { get; set; }
 
@@ -18,14 +18,39 @@ namespace RakDotNet
 
         public byte[] Data { get; set; }
 
-        public override void Serialize(BitStream stream)
+        public void Serialize(BitStream stream)
         {
-            throw new NotImplementedException();
+            stream.WriteUInt(MessageNumber);
+            stream.WriteBits(new[] {(byte) Reliability}, 3);
+
+            if (Reliability == PacketReliability.UnreliableSequenced ||
+                Reliability == PacketReliability.ReliableSequenced ||
+                Reliability == PacketReliability.ReliableOrdered)
+            {
+                stream.WriteBits(new[] {OrderingChannel}, 5);
+                stream.WriteUInt(OrderingIndex);
+            }
+
+            stream.WriteBit(SplitPacket);
+            
+            if (SplitPacket)
+            {
+                stream.WriteUShort(SplitPacketId);
+                stream.WriteUIntCompressed(SplitPacketIndex);
+                stream.WriteUIntCompressed(SplitPacketCount);
+            }
+            
+            stream.WriteUShortCompressed((ushort) BitStream.BytesToBits(Data.Length));
+            
+            stream.AlignWrite();
+            
+            stream.Write(Data);
         }
         
-        public override void Deserialize(BitStream stream)
+        public void Deserialize(BitStream stream)
         {
             MessageNumber = stream.ReadUInt();
+            
             Reliability = (PacketReliability) stream.ReadBits(3)[0];
 
             if (Reliability == PacketReliability.UnreliableSequenced ||
@@ -33,14 +58,15 @@ namespace RakDotNet
                 Reliability == PacketReliability.ReliableOrdered)
             {
                 OrderingChannel = stream.ReadBits(5)[0];
-
                 OrderingIndex = stream.ReadUInt();
             }
 
-            if (SplitPacket = stream.ReadBit())
+            SplitPacket = stream.ReadBit();
+            
+            if (SplitPacket)
             {
                 SplitPacketId = stream.ReadUShort();
-                SplitPacketIndex = stream.ReadUInt();
+                SplitPacketIndex = stream.ReadCompressedUInt();
                 SplitPacketCount = stream.ReadCompressedUInt();
             }
 
