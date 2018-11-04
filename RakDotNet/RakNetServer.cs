@@ -90,7 +90,7 @@ namespace RakDotNet
                                     _handleDisconnection(endpoint);
                                     break;
                                 case MessageIdentifiers.UserPacketEnum:
-                                    PacketReceived?.Invoke(endpoint, data);
+                                    PacketReceived?.Invoke(endpoint, packet);
                                     break;
                             }
                         }

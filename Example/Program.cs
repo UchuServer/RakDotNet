@@ -17,7 +17,7 @@ namespace Example
                 Console.WriteLine($"{endpoint.Address}:{endpoint.Port} connected");
 
             server.PacketReceived += (endpoint, data) =>
-                Console.WriteLine($"received packet from {endpoint.Address}:{endpoint.Port}");
+                Console.WriteLine($"received packet from {endpoint.Address}:{endpoint.Port} with id {data[0]}");
 
             server.Disconnection += endpoint =>
                 Console.WriteLine($"{endpoint.Address}:{endpoint.Port} disconnected");
