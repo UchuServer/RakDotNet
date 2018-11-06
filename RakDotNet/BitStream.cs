@@ -13,7 +13,11 @@ namespace RakDotNet
         public byte[] BaseBuffer => _buffer;
 
         public int BitCount => _bitsWritten;
-        public int ReadPosition => _bitsRead;
+        public int ReadPosition
+        {
+            get => _bitsRead;
+            set => _bitsRead = value;
+        }
 
         public bool AllRead => BitsToBytes(_bitsRead) >= _buffer.Length;
 
