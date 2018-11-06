@@ -109,9 +109,9 @@ namespace RakDotNet
                         var conn = _connections[k];
 
                         return conn.Resends && conn.LastAckTime < Environment.TickCount / 1000f - 10f;
-                    });
+                    }).ToArray();
 
-                    foreach (var key in dead) CloseConnection(key);
+                    for (var i = 0; i < dead.Length; i++) CloseConnection(dead[i]);
                 }
             });
         }
@@ -120,7 +120,9 @@ namespace RakDotNet
         {
             _active = false;
 
-            foreach (var endpoint in _connections.Keys) CloseConnection(endpoint);
+            var keys = _connections.Keys.ToArray();
+
+            for (var i = 0; i < keys.Length; i++) CloseConnection(keys[i]);
         }
 
         public void Send(BitStream stream, IPEndPoint endpoint,
