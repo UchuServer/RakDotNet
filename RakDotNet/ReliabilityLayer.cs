@@ -325,6 +325,10 @@ namespace RakDotNet
                 while (offset < data.Length)
                 {
                     var length = MtuSize - UdpHeaderSize - GetHeaderLength(reliability, true);
+
+                    if (length > data.Length - offset)
+                        length = data.Length - offset;
+
                     var chunk = new byte[length];
 
                     Buffer.BlockCopy(data, offset, chunk, 0, length);
