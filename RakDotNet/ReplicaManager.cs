@@ -52,27 +52,28 @@ namespace RakDotNet
             _server.Send(stream, recipients);
         }
 
-        public void SendSerialization(IReplica replica)
+        public void SendSerialization(IReplica replica, IPEndPoint[] endpoints = null)
         {
+            var recipients = endpoints ?? _connected.ToArray();
             var stream = new BitStream();
 
             stream.WriteByte((byte) MessageIdentifiers.ReplicaManagerSerialize);
             stream.WriteUShort(_replicas[replica]);
             stream.WriteSerializable(replica);
 
-            _server.Send(stream, _connected.ToArray());
+            _server.Send(stream, recipients);
         }
 
-        public void SendDestruction(IReplica replica)
+        public void SendDestruction(IReplica replica, IPEndPoint[] endpoints = null)
         {
-            replica.Destruct();
-
+            var recipients = endpoints ?? _connected.ToArray();
             var stream = new BitStream();
 
             stream.WriteByte((byte) MessageIdentifiers.ReplicaManagerDestruction);
             stream.WriteUShort(_replicas[replica]);
+            replica.Destruct();
 
-            _server.Send(stream, _connected.ToArray());
+            _server.Send(stream, recipients);
 
             _replicas.Remove(replica);
         }
