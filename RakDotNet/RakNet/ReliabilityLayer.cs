@@ -5,9 +5,9 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 
-namespace RakDotNet
+namespace RakDotNet.RakNet
 {
-    public class ReliabilityLayer
+    internal class ReliabilityLayer
     {
         private const int MtuSize = 1228;
         private const int UdpHeaderSize = 28;

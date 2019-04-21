@@ -1,13 +1,19 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
+        <TargetFramework>netcoreapp2.2</TargetFramework>
+        <LangVersion>default</LangVersion>
         <OutputType>Exe</OutputType>
-        <TargetFramework>netcoreapp2.1</TargetFramework>
-        <LangVersion>7.1</LangVersion>
     </PropertyGroup>
 
     <ItemGroup>
       <ProjectReference Include="..\RakDotNet\RakDotNet.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Update="cert.p12">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
     </ItemGroup>
 
 </Project>

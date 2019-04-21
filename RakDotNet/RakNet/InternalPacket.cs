@@ -1,6 +1,6 @@
-namespace RakDotNet
+namespace RakDotNet.RakNet
 {
-    public class InternalPacket : ISerializable
+    internal class InternalPacket : ISerializable
     {
         public uint MessageNumber { get; set; }
 
