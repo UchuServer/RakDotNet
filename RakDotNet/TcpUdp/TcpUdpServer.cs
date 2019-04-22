@@ -22,8 +22,7 @@ namespace RakDotNet.TcpUdp
         private readonly byte[] _password;
         private readonly X509Certificate _cert;
         private readonly List<TcpClient> _clients;
-
-        private IPEndPoint _endpoint => (IPEndPoint) _tcp.Server.RemoteEndPoint;
+        private readonly IPEndPoint _endpoint;
 
         private int _seqNum;
         private bool _active;
@@ -41,6 +40,7 @@ namespace RakDotNet.TcpUdp
             _password = password;
             _cert = cert;
             _clients = new List<TcpClient>();
+            _endpoint = (IPEndPoint) _tcp.LocalEndpoint;
             _seqNum = 0;
             _active = false;
             _startTime = 0;
@@ -132,9 +132,6 @@ namespace RakDotNet.TcpUdp
                         await stream.ReadAsync(lenBuf, 0, 4);
 
                         packetLength = BitConverter.ToUInt32(lenBuf, 0);
-
-                        Console.WriteLine($"lenBuf = {{ {string.Join(", ", lenBuf)} }}");
-                        Console.WriteLine($"Length = {packetLength}");
                     }
                     else if (packetLength > 0 && client.Available >= packetLength)
                     {
@@ -188,7 +185,6 @@ namespace RakDotNet.TcpUdp
 
         private void _handleData(IPEndPoint endpoint, byte[] data)
         {
-            Console.WriteLine($"data = {{ {string.Join(", ", data)} }}");
             var stream = new BitStream(data);
 
             var id = (MessageIdentifiers) stream.ReadByte();
@@ -196,7 +192,7 @@ namespace RakDotNet.TcpUdp
             switch (id)
             {
                 case MessageIdentifiers.ConnectionRequest:
-                    try {_handleConnectionRequest(stream, endpoint); } catch (Exception e) { Console.WriteLine(e); }
+                    _handleConnectionRequest(stream, endpoint);
                     break;
                 case MessageIdentifiers.InternalPing:
                     _handleInternalPing(stream, endpoint);
