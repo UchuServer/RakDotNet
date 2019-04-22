@@ -127,6 +127,8 @@ namespace RakDotNet.TcpUdp
 
                 while (client.Connected)
                 {
+                    await Task.Delay(30);
+
                     if (packetLength == 0 && client.Available >= 4)
                     {
                         var lenBuf = new byte[4];
