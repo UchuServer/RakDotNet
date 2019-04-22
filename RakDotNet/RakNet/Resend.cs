@@ -1,6 +1,6 @@
-namespace RakDotNet
+namespace RakDotNet.RakNet
 {
-    public class Resend
+    internal class Resend
     {
         public float Time { get; set; }
         public InternalPacket Packet { get; set; }

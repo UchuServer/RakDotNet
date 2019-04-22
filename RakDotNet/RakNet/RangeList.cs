@@ -2,16 +2,16 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 
-namespace RakDotNet
+namespace RakDotNet.RakNet
 {
-    public class Range<T>
+    internal class Range<T>
         where T : struct
     {
         public T Min { get; set; }
         public T Max { get; set; }
     }
 
-    public abstract class RangeList<T> : ISerializable, IEnumerable<T>
+    internal abstract class RangeList<T> : ISerializable, IEnumerable<T>
         where T : struct
     {
         protected readonly List<Range<T>> Ranges;
@@ -42,7 +42,7 @@ namespace RakDotNet
         public abstract void Deserialize(BitStream stream);
     }
 
-    public class UIntRangeList : RangeList<uint>
+    internal class UIntRangeList : RangeList<uint>
     {
         public override int Count
         {

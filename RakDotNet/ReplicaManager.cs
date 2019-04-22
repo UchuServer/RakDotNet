@@ -5,13 +5,13 @@ namespace RakDotNet
 {
     public class ReplicaManager
     {
-        private readonly RakNetServer _server;
+        private readonly IRakNetServer _server;
         private readonly List<IPEndPoint> _connected;
         private readonly Dictionary<IReplica, ushort> _replicas;
 
         private ushort _networkId;
 
-        public ReplicaManager(RakNetServer server)
+        public ReplicaManager(IRakNetServer server)
         {
             _server = server;
             _connected = new List<IPEndPoint>();
@@ -34,7 +34,7 @@ namespace RakDotNet
             }
         }
 
-        public void SendConstruction(IReplica replica, bool newReplica = true, IPEndPoint[] endpoints = null)
+        public void SendConstruction(IReplica replica, bool newReplica = true, ICollection<IPEndPoint> endpoints = null)
         {
             var recipients = endpoints ?? _connected.ToArray();
 
@@ -52,7 +52,7 @@ namespace RakDotNet
             _server.Send(stream, recipients);
         }
 
-        public void SendSerialization(IReplica replica, IPEndPoint[] endpoints = null)
+        public void SendSerialization(IReplica replica, ICollection<IPEndPoint> endpoints = null)
         {
             var recipients = endpoints ?? _connected.ToArray();
             var stream = new BitStream();
@@ -64,7 +64,7 @@ namespace RakDotNet
             _server.Send(stream, recipients);
         }
 
-        public void SendDestruction(IReplica replica, IPEndPoint[] endpoints = null)
+        public void SendDestruction(IReplica replica, ICollection<IPEndPoint> endpoints = null)
         {
             var recipients = endpoints ?? _connected.ToArray();
             var stream = new BitStream();

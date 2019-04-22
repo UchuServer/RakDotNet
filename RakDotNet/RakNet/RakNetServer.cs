@@ -5,9 +5,9 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 
-namespace RakDotNet
+namespace RakDotNet.RakNet
 {
-    public class RakNetServer
+    public class RakNetServer : IRakNetServer
     {
         public event Action<IPEndPoint, byte[]> PacketReceived;
         public event Action<IPEndPoint> NewConnection;
@@ -129,7 +129,7 @@ namespace RakDotNet
             PacketReliability reliability = PacketReliability.ReliableOrdered)
             => Send(stream, new[] {endpoint}, false, reliability);
 
-        public void Send(BitStream stream, IPEndPoint[] endpoints = null, bool broadcast = false,
+        public void Send(BitStream stream, ICollection<IPEndPoint> endpoints = null, bool broadcast = false,
             PacketReliability reliability = PacketReliability.ReliableOrdered)
             => Send(stream.BaseBuffer, endpoints, broadcast, reliability);
 
@@ -137,7 +137,7 @@ namespace RakDotNet
             PacketReliability reliability = PacketReliability.ReliableOrdered)
             => Send(data, new[] {endpoint}, false, reliability);
 
-        public void Send(byte[] data, IPEndPoint[] endpoints = null, bool broadcast = false,
+        public void Send(byte[] data, ICollection<IPEndPoint> endpoints = null, bool broadcast = false,
             PacketReliability reliability = PacketReliability.ReliableOrdered)
         {
             var recipients = broadcast || endpoints == null ? _connections.Keys.ToArray() : endpoints;
