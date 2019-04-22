@@ -17,6 +17,8 @@ namespace RakDotNet.TcpUdp
         public event Action<IPEndPoint> Disconnection;
         public event Action<IPEndPoint, SendFailReason, byte[]> SendFailed;
 
+        public ServerProtocol Protocol => ServerProtocol.TcpUdp;
+
         private readonly TcpListener _tcp;
         private readonly UdpClient _udp;
         private readonly byte[] _password;

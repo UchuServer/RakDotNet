@@ -13,6 +13,8 @@ namespace RakDotNet.RakNet
         public event Action<IPEndPoint> NewConnection;
         public event Action<IPEndPoint> Disconnection;
 
+        public ServerProtocol Protocol => ServerProtocol.RakNet;
+
         private readonly UdpClient _udp;
         private readonly Dictionary<IPEndPoint, ReliabilityLayer> _connections;
         private readonly byte[] _password;

@@ -10,6 +10,8 @@ namespace RakDotNet
         event Action<IPEndPoint> NewConnection;
         event Action<IPEndPoint> Disconnection;
 
+        ServerProtocol Protocol { get; }
+
         void Start();
 
         void Stop();
