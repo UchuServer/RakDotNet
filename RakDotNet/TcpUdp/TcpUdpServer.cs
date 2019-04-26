@@ -25,8 +25,8 @@ namespace RakDotNet.TcpUdp
         private readonly X509Certificate _cert;
         private readonly List<TcpClient> _clients;
         private readonly IPEndPoint _endpoint;
+        private readonly Dictionary<IPEndPoint, int> _seqNums;
 
-        private int _seqNum;
         private bool _active;
         private long _startTime;
 
@@ -42,8 +42,8 @@ namespace RakDotNet.TcpUdp
             _password = password;
             _cert = cert;
             _clients = new List<TcpClient>();
+            _seqNums = new Dictionary<IPEndPoint, int>();
             _endpoint = (IPEndPoint) _tcp.LocalEndpoint;
-            _seqNum = 0;
             _active = false;
             _startTime = 0;
         }
@@ -92,6 +92,9 @@ namespace RakDotNet.TcpUdp
                 while (_active)
                 {
                     var res = await _udp.ReceiveAsync();
+
+                    // Zero-length packets can act as "pings", not implemented at client side yet
+                    // Send(new byte[0], broadcast: true);
 
                     _handleUdpDatagram(res.RemoteEndPoint, res.Buffer);
                 }
@@ -153,6 +156,11 @@ namespace RakDotNet.TcpUdp
 
         private void _handleUdpDatagram(IPEndPoint endpoint, byte[] data)
         {
+            if (!_seqNums.ContainsKey(endpoint))
+            {
+                _seqNums[endpoint] = 0;
+            }
+
             using (var stream = new MemoryStream(data))
             {
                 var rel = (PacketReliability) stream.ReadByte();
@@ -173,9 +181,9 @@ namespace RakDotNet.TcpUdp
 
                     var seqNum = BitConverter.ToUInt32(seqBuf, 0);
 
-                    if (seqNum > _seqNum)
+                    if (seqNum > _seqNums[endpoint])
                     {
-                        _seqNum = (int) seqNum;
+                        _seqNums[endpoint] = (int) seqNum;
 
                         var buf = new byte[data.Length - 5];
 
