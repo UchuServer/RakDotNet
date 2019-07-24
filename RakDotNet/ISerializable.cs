@@ -1,9 +1,11 @@
+using RakDotNet.IO;
+
 namespace RakDotNet
 {
     public interface ISerializable
     {
-        void Serialize(BitStream stream);
+        void Serialize(BitWriter stream);
 
-        void Deserialize(BitStream stream);
+        void Deserialize(BitReader stream);
     }
 }

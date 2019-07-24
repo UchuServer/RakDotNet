@@ -7,31 +7,26 @@ using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
+using RakDotNet.IO;
 
 namespace RakDotNet.TcpUdp
 {
     public class TcpUdpServer : IRakNetServer
     {
-        public event Action<IPEndPoint, byte[]> PacketReceived;
-        public event Action<IPEndPoint> NewConnection;
-        public event Action<IPEndPoint> Disconnection;
-        public event Action<IPEndPoint, SendFailReason, byte[]> SendFailed;
-
-        public ServerProtocol Protocol => ServerProtocol.TcpUdp;
-
-        private readonly TcpListener _tcp;
-        private readonly UdpClient _udp;
-        private readonly byte[] _password;
         private readonly X509Certificate _cert;
         private readonly List<TcpClient> _clients;
         private readonly IPEndPoint _endpoint;
+        private readonly byte[] _password;
         private readonly Dictionary<IPEndPoint, int> _seqNums;
+
+        private readonly TcpListener _tcp;
+        private readonly UdpClient _udp;
 
         private bool _active;
         private long _startTime;
 
         public TcpUdpServer(int port, string password, X509Certificate cert = null)
-            : this(port, BitStream.ToBytes(password), cert)
+            : this(port, password.Select(c => (byte) c).ToArray(), cert)
         {
         }
 
@@ -45,8 +40,13 @@ namespace RakDotNet.TcpUdp
             _seqNums = new Dictionary<IPEndPoint, int>();
             _endpoint = (IPEndPoint) _tcp.LocalEndpoint;
             _active = false;
-            _startTime = 0;
         }
+
+        public event Action<IPEndPoint, byte[]> PacketReceived;
+        public event Action<IPEndPoint> NewConnection;
+        public event Action<IPEndPoint> Disconnection;
+
+        public ServerProtocol Protocol => ServerProtocol.TcpUdp;
 
         public void Start()
         {
@@ -65,13 +65,11 @@ namespace RakDotNet.TcpUdp
                 {
                     var client = await _tcp.AcceptTcpClientAsync();
 
-                    if (client != null)
-                    {
-                        _clients.RemoveAll(c => c.Client.RemoteEndPoint.Equals(client.Client.RemoteEndPoint));
-                        _clients.Add(client);
+                    if (client == null) continue;
+                    _clients.RemoveAll(c => c.Client.RemoteEndPoint.Equals(client.Client.RemoteEndPoint));
+                    _clients.Add(client);
 
-                        _handleTcpClient(client);
-                    }
+                    HandleTcpClient(client);
                 }
             });
 
@@ -93,132 +91,9 @@ namespace RakDotNet.TcpUdp
                 {
                     var res = await _udp.ReceiveAsync();
 
-                    // Zero-length packets can act as "pings", not implemented at client side yet
-                    // Send(new byte[0], broadcast: true);
-
-                    _handleUdpDatagram(res.RemoteEndPoint, res.Buffer);
+                    HandleUdpDatagram(res.RemoteEndPoint, res.Buffer);
                 }
             });
-        }
-
-        private void _handleTcpClient(TcpClient client)
-        {
-            Task.Run(async () =>
-            {
-                var tcpStream = client.GetStream();
-                Stream stream;
-
-                if (_cert != null)
-                {
-                    var ssl = new SslStream(tcpStream);
-
-                    try
-                    {
-                        ssl.AuthenticateAsServer(_cert);
-                    }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine(e);
-                    }
-
-                    stream = ssl;
-                }
-                else
-                    stream = tcpStream;
-
-                var packetLength = 0u;
-
-                while (client.Connected)
-                {
-                    await Task.Delay(30);
-
-                    if (packetLength == 0 && client.Available >= 4)
-                    {
-                        var lenBuf = new byte[4];
-
-                        await stream.ReadAsync(lenBuf, 0, 4);
-
-                        packetLength = BitConverter.ToUInt32(lenBuf, 0);
-                    }
-                    else if (packetLength > 0 && client.Available >= packetLength)
-                    {
-                        var buf = new byte[packetLength];
-
-                        await stream.ReadAsync(buf, 0, (int) packetLength);
-
-                        packetLength = 0;
-
-                        _handleData((IPEndPoint) client.Client.RemoteEndPoint, buf);
-                    }
-                }
-            });
-        }
-
-        private void _handleUdpDatagram(IPEndPoint endpoint, byte[] data)
-        {
-            if (!_seqNums.ContainsKey(endpoint))
-            {
-                _seqNums[endpoint] = 0;
-            }
-
-            using (var stream = new MemoryStream(data))
-            {
-                var rel = (PacketReliability) stream.ReadByte();
-
-                if (rel == PacketReliability.Unreliable)
-                {
-                    var buf = new byte[data.Length - 1];
-
-                    stream.Read(buf, 0, data.Length - 1);
-
-                    _handleData(endpoint, buf);
-                }
-                else if (rel == PacketReliability.UnreliableSequenced)
-                {
-                    var seqBuf = new byte[4];
-
-                    stream.Read(seqBuf, 0, 4);
-
-                    var seqNum = BitConverter.ToUInt32(seqBuf, 0);
-
-                    if (seqNum > _seqNums[endpoint])
-                    {
-                        _seqNums[endpoint] = (int) seqNum;
-
-                        var buf = new byte[data.Length - 5];
-
-                        stream.Read(buf, 0, data.Length - 5);
-
-                        _handleData(endpoint, buf);
-                    }
-                }
-            }
-        }
-
-        private void _handleData(IPEndPoint endpoint, byte[] data)
-        {
-            var stream = new BitStream(data);
-
-            var id = (MessageIdentifiers) stream.ReadByte();
-
-            switch (id)
-            {
-                case MessageIdentifiers.ConnectionRequest:
-                    _handleConnectionRequest(stream, endpoint);
-                    break;
-                case MessageIdentifiers.InternalPing:
-                    _handleInternalPing(stream, endpoint);
-                    break;
-                case MessageIdentifiers.NewIncomingConnection:
-                    NewConnection?.Invoke(endpoint);
-                    break;
-                case MessageIdentifiers.DisconnectionNotification:
-                    _handleDisconnection(endpoint);
-                    break;
-                case MessageIdentifiers.UserPacketEnum:
-                    PacketReceived?.Invoke(endpoint, data);
-                    break;
-            }
         }
 
         public void Stop()
@@ -231,7 +106,7 @@ namespace RakDotNet.TcpUdp
 
         public void CloseConnection(IPEndPoint endpoint)
         {
-            if (!_isConnected(endpoint))
+            if (!IsConnected(endpoint))
                 throw new InvalidOperationException("Client is not connected");
 
             Send(new[] {(byte) MessageIdentifiers.DisconnectionNotification}, endpoint);
@@ -241,17 +116,28 @@ namespace RakDotNet.TcpUdp
             Disconnection?.Invoke(endpoint);
         }
 
-        public void Send(BitStream stream, IPEndPoint endpoint,
+        public void Send(Stream stream, IPEndPoint endpoint,
             PacketReliability reliability = PacketReliability.ReliableOrdered)
-            => Send(stream, new[] {endpoint}, false, reliability);
+        {
+            Send(stream, new[] {endpoint}, false, reliability);
+        }
 
-        public void Send(BitStream stream, ICollection<IPEndPoint> endpoints = null, bool broadcast = false,
+        public void Send(Stream stream, ICollection<IPEndPoint> endpoints = null, bool broadcast = false,
             PacketReliability reliability = PacketReliability.ReliableOrdered)
-            => Send(stream.BaseBuffer, endpoints, broadcast, reliability);
+        {
+            if (!(stream is MemoryStream ms)) stream.CopyTo(ms = new MemoryStream());
+
+            var data = ms.ToArray();
+            Array.Resize(ref data, (int) stream.Position);
+
+            Send(data, endpoints, broadcast, reliability);
+        }
 
         public void Send(byte[] data, IPEndPoint endpoint,
             PacketReliability reliability = PacketReliability.ReliableOrdered)
-            => Send(data, new[] {endpoint}, false, reliability);
+        {
+            Send(data, new[] {endpoint}, false, reliability);
+        }
 
         public void Send(byte[] data, ICollection<IPEndPoint> endpoints = null, bool broadcast = false,
             PacketReliability reliability = PacketReliability.ReliableOrdered)
@@ -266,14 +152,11 @@ namespace RakDotNet.TcpUdp
                 {
                     var buf = new byte[1 + data.Length];
 
-                    buf[0] = 0;
-
                     Buffer.BlockCopy(data, 0, buf, 1, data.Length);
 
                     foreach (var recipient in recipients)
-                    {
                         Task.Run(async () => await _udp.SendAsync(buf, buf.Length, recipient));
-                    }
+
                     break;
                 }
 
@@ -284,9 +167,8 @@ namespace RakDotNet.TcpUdp
                 default:
                 {
                     var buf = new byte[4 + data.Length];
-                    var lenBuf = BitConverter.GetBytes((uint) data.Length);
 
-                    Buffer.BlockCopy(lenBuf, 0, buf, 0, 4);
+                    Buffer.BlockCopy(BitConverter.GetBytes((uint) data.Length), 0, buf, 0, 4);
                     Buffer.BlockCopy(data, 0, buf, 4, data.Length);
 
                     foreach (var recipient in recipients)
@@ -321,7 +203,9 @@ namespace RakDotNet.TcpUdp
                                 stream = ssl;
                             }
                             else
+                            {
                                 stream = tcpStream;
+                            }
 
                             await stream.WriteAsync(buf, 0, buf.Length);
                         });
@@ -332,48 +216,213 @@ namespace RakDotNet.TcpUdp
             }
         }
 
-        private void _handleConnectionRequest(BitStream stream, IPEndPoint endpoint)
+        public event Action<IPEndPoint, SendFailReason, byte[]> SendFailed;
+
+        /// <summary>
+        ///     Set up a task to handle messages from a TCP client.
+        /// </summary>
+        /// <param name="client"></param>
+        private void HandleTcpClient(TcpClient client)
         {
-            var password = stream.ReadBits(stream.BitCount - stream.ReadPosition);
+            Task.Run(async () =>
+            {
+                var tcpStream = client.GetStream();
+                Stream stream;
+
+                if (_cert != null)
+                {
+                    var ssl = new SslStream(tcpStream);
+
+                    try
+                    {
+                        ssl.AuthenticateAsServer(_cert);
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e);
+                    }
+
+                    stream = ssl;
+                }
+                else
+                {
+                    stream = tcpStream;
+                }
+
+                var packetLength = 0u;
+
+                while (client.Connected)
+                {
+                    await Task.Delay(30);
+
+                    if (packetLength == 0 && client.Available >= 4)
+                    {
+                        var lenBuf = new byte[4];
+
+                        await stream.ReadAsync(lenBuf, 0, 4);
+
+                        packetLength = BitConverter.ToUInt32(lenBuf, 0);
+                    }
+                    else if (packetLength > 0 && client.Available >= packetLength)
+                    {
+                        var buf = new byte[packetLength];
+
+                        await stream.ReadAsync(buf, 0, (int) packetLength);
+
+                        packetLength = 0;
+
+                        HandleData((IPEndPoint) client.Client.RemoteEndPoint, buf);
+                    }
+                }
+            });
+        }
+
+        /// <summary>
+        ///     Handle a UDP Datagram
+        /// </summary>
+        /// <param name="endpoint">Client</param>
+        /// <param name="data">Data</param>
+        private void HandleUdpDatagram(IPEndPoint endpoint, byte[] data)
+        {
+            if (!_seqNums.ContainsKey(endpoint)) _seqNums[endpoint] = 0;
+
+            using (var stream = new MemoryStream(data))
+            {
+                var rel = (PacketReliability) stream.ReadByte();
+
+                switch (rel)
+                {
+                    case PacketReliability.Unreliable:
+                    {
+                        var buf = new byte[data.Length - 1];
+
+                        stream.Read(buf, 0, data.Length - 1);
+
+                        HandleData(endpoint, buf);
+                        break;
+                    }
+
+                    case PacketReliability.UnreliableSequenced:
+                    {
+                        var seqBuf = new byte[4];
+
+                        stream.Read(seqBuf, 0, 4);
+
+                        var seqNum = BitConverter.ToUInt32(seqBuf, 0);
+
+                        if (seqNum > _seqNums[endpoint])
+                        {
+                            _seqNums[endpoint] = (int) seqNum;
+
+                            var buf = new byte[data.Length - 5];
+
+                            stream.Read(buf, 0, data.Length - 5);
+
+                            HandleData(endpoint, buf);
+                        }
+
+                        break;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        ///     Forward the handling of data.
+        /// </summary>
+        /// <param name="endpoint">Client</param>
+        /// <param name="data">Data</param>
+        private void HandleData(IPEndPoint endpoint, byte[] data)
+        {
+            var stream = new MemoryStream(data);
+
+            using (var reader = new BitReader(stream))
+            {
+                var id = (MessageIdentifiers) reader.Read<byte>();
+                switch (id)
+                {
+                    case MessageIdentifiers.ConnectionRequest:
+                        HandleConnectionRequest(reader, endpoint);
+                        break;
+                    case MessageIdentifiers.InternalPing:
+                        HandleInternalPing(reader, endpoint);
+                        break;
+                    case MessageIdentifiers.NewIncomingConnection:
+                        NewConnection?.Invoke(endpoint);
+                        break;
+                    case MessageIdentifiers.DisconnectionNotification:
+                        HandleDisconnection(endpoint);
+                        break;
+                    case MessageIdentifiers.UserPacketEnum:
+                        PacketReceived?.Invoke(endpoint, data);
+                        break;
+                }
+            }
+        }
+
+        /// <summary>
+        ///     Reply to a client connection request.
+        /// </summary>
+        /// <param name="reader">Connection Request</param>
+        /// <param name="endpoint">Client</param>
+        /// <exception cref="NotImplementedException">The password does not match.</exception>
+        private void HandleConnectionRequest(BitReader reader, IPEndPoint endpoint)
+        {
+            var password = reader.ReadBytes((int) (reader.BaseStream.Length - reader.BaseStream.Position));
 
             if (password.SequenceEqual(_password))
             {
-                var res = new BitStream();
+                var stream = new MemoryStream();
+                using (var writer = new BitWriter(stream))
+                {
+                    writer.Write((byte) MessageIdentifiers.ConnectionRequestAccepted);
+                    writer.Write(endpoint.Address.GetAddressBytes());
+                    writer.Write((ushort) endpoint.Port);
+                    writer.Write(new byte[2]);
+                    writer.Write(_endpoint.Address.GetAddressBytes());
+                    writer.Write((ushort) _endpoint.Port);
+                }
 
-                res.WriteByte((byte) MessageIdentifiers.ConnectionRequestAccepted);
-                res.Write(endpoint.Address.GetAddressBytes());
-                res.WriteUShort((ushort) endpoint.Port);
-                res.Write(new byte[2]);
-                res.Write(_endpoint.Address.GetAddressBytes());
-                res.WriteUShort((ushort) _endpoint.Port);
-
-                Send(res, endpoint);
+                Send(stream, endpoint);
             }
-            else
-                throw new NotImplementedException();
+            else throw new NotImplementedException();
         }
 
-        private void _handleInternalPing(BitStream stream, IPEndPoint endpoint)
+        /// <summary>
+        ///     Reply to a client ping request.
+        /// </summary>
+        /// <param name="reader">Ping request</param>
+        /// <param name="endpoint">Client</param>
+        private void HandleInternalPing(BitReader reader, IPEndPoint endpoint)
         {
-            var time = stream.ReadUInt();
+            var stream = new MemoryStream();
+            using (var writer = new BitWriter(stream))
+            {
+                writer.Write((byte) MessageIdentifiers.ConnectedPong);
+                writer.Write(reader.Read<uint>());
+                writer.Write((uint) (Environment.TickCount - _startTime));
+            }
 
-            var pong = new BitStream();
-
-            pong.WriteByte((byte) MessageIdentifiers.ConnectedPong);
-            pong.WriteUInt(time);
-            pong.WriteUInt((uint) (Environment.TickCount - _startTime));
-
-            Send(pong, endpoint);
+            Send(stream, endpoint);
         }
 
-        private void _handleDisconnection(IPEndPoint endpoint)
+        /// <summary>
+        ///     Reply to a client request to disconnect from the server.
+        /// </summary>
+        /// <param name="endpoint">Client</param>
+        private void HandleDisconnection(IPEndPoint endpoint)
         {
             _clients.RemoveAll(c => c.Client.RemoteEndPoint.Equals(endpoint));
 
             Disconnection?.Invoke(endpoint);
         }
 
-        private bool _isConnected(IPEndPoint endpoint) // TODO: check if the client is actually connected
+        /// <summary>
+        ///     Check if a client is connected to the server.
+        /// </summary>
+        /// <param name="endpoint">Client</param>
+        /// <returns></returns>
+        private bool IsConnected(IPEndPoint endpoint) // TODO: check if the client is actually connected
             => _clients.Exists(c => c.Client.RemoteEndPoint.Equals(endpoint));
     }
 }

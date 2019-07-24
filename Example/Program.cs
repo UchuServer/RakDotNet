@@ -1,8 +1,6 @@
 ﻿using System;
-// using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using RakDotNet;
-// using RakDotNet.RakNet;
 using RakDotNet.TcpUdp;
 
 namespace Example
@@ -11,9 +9,7 @@ namespace Example
     {
         public static async Task Main(string[] args)
         {
-            // IRakNetServer server = new RakNetServer(1001, "3.25 ND1");
-            IRakNetServer server = new TcpUdpServer(21836, "3.25 ND1"/*,
-                new X509Certificate2("cert.p12", "1234")*/);
+            IRakNetServer server = new TcpUdpServer(21836, "3.25 ND1");
 
             Console.WriteLine("starting");
 

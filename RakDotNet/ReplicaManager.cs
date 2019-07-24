@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
+using RakDotNet.IO;
 
 namespace RakDotNet
 {
@@ -41,11 +43,14 @@ namespace RakDotNet
             if (newReplica)
                 _replicas[replica] = _networkId++;
 
-            var stream = new BitStream();
-
-            stream.WriteByte((byte) MessageIdentifiers.ReplicaManagerConstruction);
-            stream.WriteBit(true);
-            stream.WriteUShort(_replicas[replica]);
+            var stream = new MemoryStream();
+            
+            using (var writer = new BitWriter(stream))
+            {
+                writer.Write((byte) MessageIdentifiers.ReplicaManagerConstruction);
+                writer.WriteBit(true);
+                writer.Write(_replicas[replica]);
+            }
 
             replica.Construct(stream);
 
@@ -55,11 +60,15 @@ namespace RakDotNet
         public void SendSerialization(IReplica replica, ICollection<IPEndPoint> endpoints = null)
         {
             var recipients = endpoints ?? _connected.ToArray();
-            var stream = new BitStream();
+            
+            var stream = new MemoryStream();
 
-            stream.WriteByte((byte) MessageIdentifiers.ReplicaManagerSerialize);
-            stream.WriteUShort(_replicas[replica]);
-            stream.WriteSerializable(replica);
+            using (var writer = new BitWriter(stream))
+            {
+                writer.Write((byte) MessageIdentifiers.ReplicaManagerSerialize);
+                writer.Write(_replicas[replica]);
+                writer.Write(replica);
+            }
 
             _server.Send(stream, recipients);
         }
@@ -67,10 +76,15 @@ namespace RakDotNet
         public void SendDestruction(IReplica replica, ICollection<IPEndPoint> endpoints = null)
         {
             var recipients = endpoints ?? _connected.ToArray();
-            var stream = new BitStream();
+            
+            var stream = new MemoryStream();
 
-            stream.WriteByte((byte) MessageIdentifiers.ReplicaManagerDestruction);
-            stream.WriteUShort(_replicas[replica]);
+            using (var writer = new BitWriter(stream))
+            {
+                writer.Write((byte) MessageIdentifiers.ReplicaManagerDestruction);
+                writer.Write(_replicas[replica]);
+            }
+            
             replica.Destruct();
 
             _server.Send(stream, recipients);

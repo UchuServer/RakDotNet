@@ -1,8 +1,10 @@
+using System.IO;
+
 namespace RakDotNet
 {
     public interface IReplica : ISerializable
     {
-        void Construct(BitStream stream);
+        void Construct(Stream stream);
         void Destruct();
     }
 }
