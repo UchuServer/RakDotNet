@@ -4,8 +4,8 @@ namespace RakDotNet
 {
     public interface ISerializable
     {
-        void Serialize(BitWriter stream);
+        void Serialize(BitWriter writer);
 
-        void Deserialize(BitReader stream);
+        void Deserialize(BitReader reader);
     }
 }

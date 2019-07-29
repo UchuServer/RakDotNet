@@ -66,10 +66,24 @@ namespace RakDotNet
         
         public static string ReadString(this BitReader @this, int length = 33, bool wide = false)
         {
-            Span<byte> bytes = stackalloc byte[length * (wide ? 2 : 1)];
-            @this.Read(bytes, length * (wide ? sizeof(char) : sizeof(byte)) * 8);
+            var builder = new StringBuilder();
 
-            return wide ? Encoding.Unicode.GetString(bytes) : Encoding.ASCII.GetString(bytes);
+            for (var i = 0; i < length; i++)
+            {
+                if (wide) builder.Append((char) @this.Read<short>());
+                else builder.Append((char) @this.Read<byte>());
+                if (builder[builder.Length - 1] != '\0') continue;
+                builder.Length--;
+                break;
+            }
+
+            for (var i = 0; i < length - builder.Length - 1; i++)
+            {
+                if (wide) @this.Read<short>();
+                else @this.Read<byte>();
+            }
+
+            return builder.ToString();
         }
     }
 }
