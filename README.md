@@ -20,4 +20,4 @@ Contributions are always welcome!
 
 ## License
 
-RakDotNet is licensed under the Lesser GNU Public License version 3.0, please see LICENSE for the full license.
+RakDotNet is licensed under the GNU Lesser General Public License version 3.0, please see LICENSE for the full license.
