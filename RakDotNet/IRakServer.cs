@@ -17,8 +17,6 @@ namespace RakDotNet
 
         Task SendAsync(IPEndPoint endPoint, byte[] data, Reliability reliability = Reliability.ReliableOrdered);
         
-        void Send(IPEndPoint endPoint, byte[] data, Reliability reliability = Reliability.ReliableOrdered);
-
         Task CloseAsync(IPEndPoint endPoint);
 
         IRakConnection GetConnection(IPEndPoint endPoint);

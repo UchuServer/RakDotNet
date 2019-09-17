@@ -72,6 +72,7 @@ namespace RakDotNet.TcpUdp
                 await CloseAsync(connection.Key);
             }
             
+            // TODO: Fix
             _tcpAcceptTask.Dispose();
             _udpRecvTask.Dispose();
             
@@ -115,43 +116,6 @@ namespace RakDotNet.TcpUdp
                     break;
             }
         }
-
-        public void Send(IPEndPoint endPoint, byte[] data,
-            Reliability reliability = Reliability.ReliableOrdered)
-        {
-            switch (reliability)
-            {
-                case Reliability.Unreliable:
-                case Reliability.UnreliableSequenced:
-                    var len = 1 + data.Length;
-
-                    if (reliability == Reliability.UnreliableSequenced)
-                        len += 4;
-
-                    using (var stream = new MemoryStream(len))
-                    using (var writer = new BinaryWriter(stream))
-                    {
-                        writer.Write((byte) reliability);
-
-                        if (reliability == Reliability.UnreliableSequenced)
-                            writer.Write(_sendSeqNum++);
-
-                        writer.Write(data);
-
-                        _udpClient.Send(stream.ToArray(), len, endPoint);
-                    }
-
-                    break;
-
-                default:
-                    if (!_tcpConnections.TryGetValue(endPoint, out var conn))
-                        throw new InvalidOperationException("Client is not connected!!");
-
-                    conn.Connection.Send(data);
-
-                    break;
-            }
-        }
         
         public async Task CloseAsync(IPEndPoint endPoint)
         {
@@ -182,13 +146,18 @@ namespace RakDotNet.TcpUdp
 
                     var client = await _tcpServer.AcceptTcpClientAsync().ConfigureAwait(false);
 
-                    if (_tcpConnections.ContainsKey(client.GetRemoteEndPoint()))
-                        continue;
-                    //throw new InvalidOperationException("Client is already in connections!!");
+                    var remoteEndpoint = client.GetRemoteEndPoint();
+                    
+                    if (_tcpConnections.ContainsKey(remoteEndpoint))
+                    {
+                        // We have to kick the client that is logged in and allow the new one. We don't know if the
+                        // server thinks it's connected when it's not. This should catch those edge cases.
+                        await _tcpConnections[remoteEndpoint].Connection.CloseAsync();
+                    }
 
                     var conn = new TcpUdpConnection(client, _cert);
 
-                    _tcpConnections[client.GetRemoteEndPoint()] = new ConnectionEntry
+                    _tcpConnections[remoteEndpoint] = new ConnectionEntry
                     {
                         Connection = conn,
                         RunTask = conn.RunAsync()
@@ -196,23 +165,23 @@ namespace RakDotNet.TcpUdp
 
                     conn.MessageReceived += async data =>
                     {
-                        await OnMessageReceivedAsync(client.GetRemoteEndPoint(), data, Reliability.ReliableOrdered)
+                        await OnMessageReceivedAsync(remoteEndpoint, data, Reliability.ReliableOrdered)
                             .ConfigureAwait(false);
                     };
 
                     conn.Disconnected += async reason =>
                     {
-                        if (!_tcpConnections.ContainsKey(client.GetRemoteEndPoint()))
+                        if (!_tcpConnections.ContainsKey(remoteEndpoint))
                             return;
 
-                        _tcpConnections.TryRemove(client.GetRemoteEndPoint(), out _);
+                        _tcpConnections.TryRemove(remoteEndpoint, out _);
 
                         if (ClientDisconnected != null)
-                            await ClientDisconnected(client.GetRemoteEndPoint(), reason).ConfigureAwait(false);
+                            await ClientDisconnected(remoteEndpoint, reason).ConfigureAwait(false);
                     };
 
                     // temp hack
-                    var __ = ClientConnected?.Invoke(client.GetRemoteEndPoint());
+                    var __ = ClientConnected?.Invoke(remoteEndpoint);
                 }
             }, cancelToken);
         }

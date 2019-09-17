@@ -93,6 +93,34 @@ namespace RakDotNet.TcpUdp
             Send(new ReadOnlySpan<byte>(buf, index, length));
         }
 
+        public override string ToString()
+        {
+            return EndPoint.ToString();
+        }
+
+        public override bool Equals(object obj)
+        {
+            switch (obj)
+            {
+                case IPEndPoint endPoint:
+                    return endPoint.Equals(EndPoint);
+                case IRakConnection rakConnection:
+                    return rakConnection.EndPoint.Equals(EndPoint);
+                default:
+                    return false;
+            }
+        }
+
+        protected bool Equals(TcpUdpConnection other)
+        {
+            return other.EndPoint.Equals(EndPoint);
+        }
+
+        public override int GetHashCode()
+        {
+            return EndPoint.GetHashCode();
+        }
+
         internal async Task RunAsync()
         {
             if (_cert != null && !_sslAuthenticated)
