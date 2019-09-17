@@ -27,11 +27,14 @@ namespace RakDotNet.IO
         }
 
         public static int WriteCompressed(this BitWriter @this, Span<byte> buf, int bits, bool unsigned)
-            => @this.WriteCompressed((ReadOnlySpan<byte>)buf, bits, unsigned);
-
-        public static int WriteCompressed(this BitWriter @this, byte[] buf, int index, int length, int bits, bool unsigned)
         {
-            if (bits > (length * 8))
+            return @this.WriteCompressed((ReadOnlySpan<byte>) buf, bits, unsigned);
+        }
+
+        public static int WriteCompressed(this BitWriter @this, byte[] buf, int index, int length, int bits,
+            bool unsigned)
+        {
+            if (bits > length * 8)
                 throw new ArgumentOutOfRangeException(nameof(bits), "Bit count exceeds buffer length");
 
             if (index > length)
@@ -46,13 +49,15 @@ namespace RakDotNet.IO
             var buf = new byte[size];
             var ptr = Marshal.AllocHGlobal(size);
 
-            Marshal.StructureToPtr<T>(val, ptr, false);
+            Marshal.StructureToPtr(val, ptr, false);
             Marshal.Copy(ptr, buf, 0, size);
 
             return @this.WriteCompressed(new ReadOnlySpan<byte>(buf), bits, unsigned);
         }
 
         public static int WriteCompressed<T>(this BitWriter @this, T val, bool unsigned) where T : struct
-            => @this.WriteCompressed<T>(val, Marshal.SizeOf<T>() * 8, unsigned);
+        {
+            return @this.WriteCompressed(val, Marshal.SizeOf<T>() * 8, unsigned);
+        }
     }
 }

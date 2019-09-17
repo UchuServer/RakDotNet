@@ -1,9 +1,9 @@
-﻿using RakDotNet.IO;
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Threading.Tasks;
+using RakDotNet.IO;
 
 namespace RakDotNet
 {
@@ -26,10 +26,7 @@ namespace RakDotNet
         {
             if (_connections.TryAdd(connection.EndPoint, connection))
             {
-                foreach (var replica in _replicas.Keys)
-                {
-                    SendConstruction(replica, false, new[] { connection.EndPoint });
-                }
+                foreach (var replica in _replicas.Keys) SendConstruction(replica, false, new[] {connection.EndPoint});
 
                 connection.Disconnected += reason =>
                 {
@@ -50,17 +47,15 @@ namespace RakDotNet
             using (var stream = new MemoryStream())
             using (var writer = new BitWriter(stream))
             {
-                writer.Write((byte)MessageIdentifier.ReplicaManagerConstruction);
+                writer.Write((byte) MessageIdentifier.ReplicaManagerConstruction);
                 writer.WriteBit(true);
                 writer.Write(_replicas[replica]);
 
                 replica.Construct(writer);
 
                 foreach (var endPoint in recipients)
-                {
                     if (_connections.TryGetValue(endPoint, out var conn))
                         conn.Send(stream.ToArray());
-                }
             }
         }
 
@@ -71,15 +66,13 @@ namespace RakDotNet
             using (var stream = new MemoryStream())
             using (var writer = new BitWriter(stream))
             {
-                writer.Write((byte)MessageIdentifier.ReplicaManagerSerialize);
+                writer.Write((byte) MessageIdentifier.ReplicaManagerSerialize);
                 writer.Write(_replicas[replica]);
                 writer.WriteSerializable(replica);
 
                 foreach (var endPoint in recipients)
-                {
                     if (_connections.TryGetValue(endPoint, out var conn))
                         conn.Send(stream.ToArray());
-                }
             }
         }
 
@@ -90,16 +83,14 @@ namespace RakDotNet
             using (var stream = new MemoryStream())
             using (var writer = new BitWriter(stream))
             {
-                writer.Write((byte)MessageIdentifier.ReplicaManagerDestruction);
+                writer.Write((byte) MessageIdentifier.ReplicaManagerDestruction);
                 writer.Write(_replicas[replica]);
 
                 replica.Destruct();
 
                 foreach (var endPoint in recipients)
-                {
                     if (_connections.TryGetValue(endPoint, out var conn))
                         conn.Send(stream.ToArray());
-                }
             }
 
             _replicas.TryRemove(replica, out _);

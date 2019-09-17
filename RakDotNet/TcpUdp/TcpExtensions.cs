@@ -5,8 +5,14 @@ namespace RakDotNet.TcpUdp
 {
     public static class TcpExtensions
     {
-        public static IPEndPoint GetRemoteEndPoint(this TcpClient @this) => (IPEndPoint)@this.Client.RemoteEndPoint;
+        public static IPEndPoint GetRemoteEndPoint(this TcpClient @this)
+        {
+            return (IPEndPoint) @this.Client.RemoteEndPoint;
+        }
 
-        public static IPEndPoint GetLocalEndPoint(this TcpListener @this) => (IPEndPoint)@this.LocalEndpoint;
+        public static IPEndPoint GetLocalEndPoint(this TcpListener @this)
+        {
+            return (IPEndPoint) @this.LocalEndpoint;
+        }
     }
 }

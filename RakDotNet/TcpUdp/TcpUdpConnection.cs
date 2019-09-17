@@ -7,6 +7,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Timers;
 using Timer = System.Timers.Timer;
 
 namespace RakDotNet.TcpUdp
@@ -14,29 +15,23 @@ namespace RakDotNet.TcpUdp
     public class TcpUdpConnection : IRakConnection
     {
         public const int PING_INTERVAL = 5000;
-
-        public event Func<byte[], Task> MessageReceived;
-        public event Func<CloseReason, Task> Disconnected;
+        private readonly X509Certificate _cert;
 
         private readonly TcpClient _tcp;
-        private readonly X509Certificate _cert;
-        private readonly SemaphoreSlim _tcpReceiveLock;
         private readonly CancellationTokenSource _tcpCts;
+        private readonly SemaphoreSlim _tcpReceiveLock;
+        private int _cumulativePing;
+
+        private uint _curPacketLength;
+        private int _lastPing;
+        private int _pingCount;
+
+        private int _pingTimer;
+        private bool _sslAuthenticated;
 
         private Stream _tcpStream;
 
-        private uint _curPacketLength;
-        private bool _sslAuthenticated;
-
-        private int _pingTimer;
-        private int _lastPing;
-        private int _pingCount;
-        private int _cumulativePing;
-
-        private Timer _timer;
-
-        public int AveragePing => _pingCount > 0 && _cumulativePing > 0 ? _cumulativePing / _pingCount : -1;
-        public IPEndPoint EndPoint => _tcp.GetRemoteEndPoint();
+        private readonly Timer _timer;
 
         internal TcpUdpConnection(TcpClient tcp, X509Certificate certificate = null)
         {
@@ -61,6 +56,41 @@ namespace RakDotNet.TcpUdp
             };
 
             _timer.Elapsed += PingTimerElapsed;
+        }
+
+        public event Func<byte[], Task> MessageReceived;
+        public event Func<CloseReason, Task> Disconnected;
+
+        public int AveragePing => _pingCount > 0 && _cumulativePing > 0 ? _cumulativePing / _pingCount : -1;
+        public IPEndPoint EndPoint => _tcp.GetRemoteEndPoint();
+
+        public async Task CloseAsync()
+        {
+            if (!_tcp.Connected)
+                throw new InvalidOperationException("Connection is closed!");
+
+            _tcp.Close();
+
+            await DisconnectInternalAsync(CloseReason.ForceDisconnect);
+        }
+
+        public void Send(ReadOnlySpan<byte> buf)
+        {
+            using (var writer = new BinaryWriter(_tcpStream, Encoding.UTF8, true))
+            {
+                writer.Write(buf.Length);
+                writer.Write(buf);
+            }
+        }
+
+        public void Send(Span<byte> buf)
+        {
+            Send((ReadOnlySpan<byte>) buf);
+        }
+
+        public void Send(byte[] buf, int index, int length)
+        {
+            Send(new ReadOnlySpan<byte>(buf, index, length));
         }
 
         internal async Task RunAsync()
@@ -101,7 +131,7 @@ namespace RakDotNet.TcpUdp
 
                     await ReceiveTcpAsync(_tcpStream, cancelToken).ConfigureAwait(false);
                 }
-            });
+            }, cancelToken);
         }
 
         private async Task ReceiveTcpAsync(Stream stream, CancellationToken cancelToken)
@@ -120,8 +150,7 @@ namespace RakDotNet.TcpUdp
 
                         _curPacketLength = BitConverter.ToUInt32(packetLenBuffer);
                     }
-                }
-                while (_curPacketLength == 0 || _curPacketLength > _tcp.Available);
+                } while (_curPacketLength == 0 || _curPacketLength > _tcp.Available);
 
                 var packetBuffer = new byte[_curPacketLength];
 
@@ -139,7 +168,7 @@ namespace RakDotNet.TcpUdp
 
         private void OnPacket(byte[] buf)
         {
-            switch ((MessageIdentifier)buf[0])
+            switch ((MessageIdentifier) buf[0])
             {
                 case MessageIdentifier.InternalPing:
                     DoPong(buf);
@@ -166,7 +195,7 @@ namespace RakDotNet.TcpUdp
 
                 var old = reader.ReadUInt32();
 
-                _lastPing = (int)(curr - old);
+                _lastPing = (int) (curr - old);
                 _cumulativePing += _lastPing;
                 _pingCount++;
             }
@@ -177,7 +206,7 @@ namespace RakDotNet.TcpUdp
             using (var stream = new MemoryStream(1 + 4 + 4))
             using (var writer = new BinaryWriter(stream))
             {
-                writer.Write((byte)MessageIdentifier.ConnectedPong);
+                writer.Write((byte) MessageIdentifier.ConnectedPong);
                 writer.Write(new ArraySegment<byte>(data, 1, 4));
                 writer.Write(0u);
 
@@ -190,14 +219,14 @@ namespace RakDotNet.TcpUdp
             using (var stream = new MemoryStream(1 + 4))
             using (var writer = new BinaryWriter(stream))
             {
-                writer.Write((byte)MessageIdentifier.InternalPing);
-                writer.Write((uint)_pingTimer);
+                writer.Write((byte) MessageIdentifier.InternalPing);
+                writer.Write((uint) _pingTimer);
 
                 Send(stream.ToArray());
             }
         }
 
-        private void PingTimerElapsed(object sender, System.Timers.ElapsedEventArgs args)
+        private void PingTimerElapsed(object sender, ElapsedEventArgs args)
         {
             try
             {
@@ -217,28 +246,5 @@ namespace RakDotNet.TcpUdp
             if (Disconnected != null)
                 await Disconnected(reason).ConfigureAwait(false);
         }
-
-        public async Task CloseAsync()
-        {
-            if (!_tcp.Connected)
-                throw new InvalidOperationException("Connection is closed!");
-
-            _tcp.Close();
-
-            await DisconnectInternalAsync(CloseReason.ForceDisconnect);
-        }
-
-        public void Send(ReadOnlySpan<byte> buf)
-        {
-            using (var writer = new BinaryWriter(_tcpStream, Encoding.UTF8, true))
-            {
-                writer.Write(buf.Length);
-                writer.Write(buf);
-            }
-        }
-
-        public void Send(Span<byte> buf) => Send((ReadOnlySpan<byte>)buf);
-
-        public void Send(byte[] buf, int index, int length) => Send(new ReadOnlySpan<byte>(buf, index, length));
     }
 }

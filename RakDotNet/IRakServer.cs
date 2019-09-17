@@ -13,7 +13,11 @@ namespace RakDotNet
 
         Task RunAsync(CancellationToken cancelToken = default);
 
+        Task ShutdownAsync();
+
         Task SendAsync(IPEndPoint endPoint, byte[] data, Reliability reliability = Reliability.ReliableOrdered);
+        
+        void Send(IPEndPoint endPoint, byte[] data, Reliability reliability = Reliability.ReliableOrdered);
 
         Task CloseAsync(IPEndPoint endPoint);
 

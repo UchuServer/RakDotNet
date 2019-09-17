@@ -6,11 +6,10 @@ namespace RakDotNet
 {
     public interface IRakConnection
     {
-        event Func<byte[], Task> MessageReceived;
-        event Func<CloseReason, Task> Disconnected;
-
         int AveragePing { get; }
         IPEndPoint EndPoint { get; }
+        event Func<byte[], Task> MessageReceived;
+        event Func<CloseReason, Task> Disconnected;
 
         Task CloseAsync();
 

@@ -12,27 +12,23 @@ namespace RakDotNet.TcpUdp
 {
     public class TcpUdpServer : IRakServer
     {
-        public event Func<IPEndPoint, byte[], Reliability, Task> MessageReceived;
-        public event Func<IPEndPoint, Task> ClientConnected;
-        public event Func<IPEndPoint, CloseReason, Task> ClientDisconnected;
-        
         private readonly X509Certificate _cert;
 
-        private readonly UdpClient _udpClient;
-        private readonly SemaphoreSlim _udpReceiveLock;
-
-        private readonly TcpListener _tcpServer;
+        private readonly byte[] _password;
         private readonly ConcurrentDictionary<IPEndPoint, ConnectionEntry> _tcpConnections;
 
-        private readonly byte[] _password;
-
-        private bool _tcpStarted;
-
-        private uint _sendSeqNum;
+        private readonly TcpListener _tcpServer;
+        private readonly UdpClient _udpClient;
+        
+        private readonly SemaphoreSlim _udpReceiveLock;
+        
         private uint _recvSeqNum;
+        private uint _sendSeqNum;
 
         private Task _tcpAcceptTask;
         private Task _udpRecvTask;
+
+        private bool _tcpStarted;
 
         public TcpUdpServer(int port, string password, X509Certificate cert = null)
         {
@@ -46,16 +42,17 @@ namespace RakDotNet.TcpUdp
 
             _password = new byte[password.Length];
 
-            for (var i = 0; i < password.Length; i++)
-            {
-                _password[i] = (byte)password[i];
-            }
+            for (var i = 0; i < password.Length; i++) _password[i] = (byte) password[i];
 
             _tcpStarted = false;
 
             _sendSeqNum = 0;
             _recvSeqNum = 0;
         }
+
+        public event Func<IPEndPoint, byte[], Reliability, Task> MessageReceived;
+        public event Func<IPEndPoint, Task> ClientConnected;
+        public event Func<IPEndPoint, CloseReason, Task> ClientDisconnected;
 
         public Task RunAsync(CancellationToken cancelToken = default)
         {
@@ -68,10 +65,111 @@ namespace RakDotNet.TcpUdp
             return Task.WhenAny(tasks);
         }
 
+        public async Task ShutdownAsync()
+        {
+            foreach (var connection in _tcpConnections)
+            {
+                await CloseAsync(connection.Key);
+            }
+            
+            _tcpAcceptTask.Dispose();
+            _udpRecvTask.Dispose();
+            
+            _tcpServer.Stop();
+            _udpClient.Close();
+        }
+        
+        public async Task SendAsync(IPEndPoint endPoint, byte[] data,
+            Reliability reliability = Reliability.ReliableOrdered)
+        {
+            switch (reliability)
+            {
+                case Reliability.Unreliable:
+                case Reliability.UnreliableSequenced:
+                    var len = 1 + data.Length;
+
+                    if (reliability == Reliability.UnreliableSequenced)
+                        len += 4;
+
+                    using (var stream = new MemoryStream(len))
+                    using (var writer = new BinaryWriter(stream))
+                    {
+                        writer.Write((byte) reliability);
+
+                        if (reliability == Reliability.UnreliableSequenced)
+                            writer.Write(_sendSeqNum++);
+
+                        writer.Write(data);
+
+                        await _udpClient.SendAsync(stream.ToArray(), len, endPoint).ConfigureAwait(false);
+                    }
+
+                    break;
+
+                default:
+                    if (!_tcpConnections.TryGetValue(endPoint, out var conn))
+                        throw new InvalidOperationException("Client is not connected!!");
+
+                    conn.Connection.Send(data);
+
+                    break;
+            }
+        }
+
+        public void Send(IPEndPoint endPoint, byte[] data,
+            Reliability reliability = Reliability.ReliableOrdered)
+        {
+            switch (reliability)
+            {
+                case Reliability.Unreliable:
+                case Reliability.UnreliableSequenced:
+                    var len = 1 + data.Length;
+
+                    if (reliability == Reliability.UnreliableSequenced)
+                        len += 4;
+
+                    using (var stream = new MemoryStream(len))
+                    using (var writer = new BinaryWriter(stream))
+                    {
+                        writer.Write((byte) reliability);
+
+                        if (reliability == Reliability.UnreliableSequenced)
+                            writer.Write(_sendSeqNum++);
+
+                        writer.Write(data);
+
+                        _udpClient.Send(stream.ToArray(), len, endPoint);
+                    }
+
+                    break;
+
+                default:
+                    if (!_tcpConnections.TryGetValue(endPoint, out var conn))
+                        throw new InvalidOperationException("Client is not connected!!");
+
+                    conn.Connection.Send(data);
+
+                    break;
+            }
+        }
+        
+        public async Task CloseAsync(IPEndPoint endPoint)
+        {
+            if (!_tcpConnections.TryGetValue(endPoint, out var conn))
+                throw new InvalidOperationException("Client is not connected!!");
+
+            await conn.Connection.CloseAsync();
+        }
+
+        public IRakConnection GetConnection(IPEndPoint endPoint)
+        {
+            return _tcpConnections.TryGetValue(endPoint, out var entry) ? entry.Connection : null;
+        }
+
         private Task RunTcpAcceptLoopAsync(CancellationToken cancelToken)
         {
             return Task.Run(async () =>
-            { 
+            {
                 if (_tcpStarted)
                     _tcpServer.Stop();
 
@@ -86,7 +184,7 @@ namespace RakDotNet.TcpUdp
 
                     if (_tcpConnections.ContainsKey(client.GetRemoteEndPoint()))
                         continue;
-                        //throw new InvalidOperationException("Client is already in connections!!");
+                    //throw new InvalidOperationException("Client is already in connections!!");
 
                     var conn = new TcpUdpConnection(client, _cert);
 
@@ -98,7 +196,8 @@ namespace RakDotNet.TcpUdp
 
                     conn.MessageReceived += async data =>
                     {
-                        await OnMessageReceivedAsync(client.GetRemoteEndPoint(), data, Reliability.ReliableOrdered).ConfigureAwait(false);
+                        await OnMessageReceivedAsync(client.GetRemoteEndPoint(), data, Reliability.ReliableOrdered)
+                            .ConfigureAwait(false);
                     };
 
                     conn.Disconnected += async reason =>
@@ -115,7 +214,7 @@ namespace RakDotNet.TcpUdp
                     // temp hack
                     var __ = ClientConnected?.Invoke(client.GetRemoteEndPoint());
                 }
-            });
+            }, cancelToken);
         }
 
         private Task RunReceiveUdpAsync(CancellationToken cancelToken)
@@ -128,7 +227,7 @@ namespace RakDotNet.TcpUdp
 
                     await ReceiveUdpAsync(cancelToken).ConfigureAwait(false);
                 }
-            });
+            }, cancelToken);
         }
 
         private async Task ReceiveUdpAsync(CancellationToken cancelToken)
@@ -139,7 +238,7 @@ namespace RakDotNet.TcpUdp
             {
                 var recv = await _udpClient.ReceiveAsync().ConfigureAwait(false);
 
-                var reliability = (Reliability)recv.Buffer[0];
+                var reliability = (Reliability) recv.Buffer[0];
 
                 var offset = 1;
 
@@ -170,7 +269,7 @@ namespace RakDotNet.TcpUdp
 
         private async Task OnMessageReceivedAsync(IPEndPoint endPoint, byte[] data, Reliability reliability)
         {
-            switch ((MessageIdentifier)data[0])
+            switch ((MessageIdentifier) data[0])
             {
                 case MessageIdentifier.ConnectionRequest:
                     await DoConnectionRequestAsync(endPoint, data).ConfigureAwait(false);
@@ -204,66 +303,20 @@ namespace RakDotNet.TcpUdp
             using (var stream = new MemoryStream(1 + 4 + 2 + 2 + 4 + 2))
             using (var writer = new BinaryWriter(stream))
             {
-                writer.Write((byte)MessageIdentifier.ConnectionRequestAccepted);
+                writer.Write((byte) MessageIdentifier.ConnectionRequestAccepted);
 
                 writer.Write(endPoint.Address.GetAddressBytes());
-                writer.Write((ushort)endPoint.Port);
+                writer.Write((ushort) endPoint.Port);
 
                 writer.Write(new byte[2]);
 
                 var local = _tcpServer.GetLocalEndPoint();
 
                 writer.Write(local.Address.GetAddressBytes());
-                writer.Write((ushort)local.Port);
+                writer.Write((ushort) local.Port);
 
                 await SendAsync(endPoint, stream.ToArray()).ConfigureAwait(false);
             }
         }
-
-        public async Task SendAsync(IPEndPoint endPoint, byte[] data, Reliability reliability = Reliability.ReliableOrdered)
-        {
-            switch (reliability)
-            {
-                case Reliability.Unreliable:
-                case Reliability.UnreliableSequenced:
-                    var len = 1 + data.Length;
-
-                    if (reliability == Reliability.UnreliableSequenced)
-                        len += 4;
-
-                    using (var stream = new MemoryStream(len))
-                    using (var writer = new BinaryWriter(stream))
-                    {
-                        writer.Write((byte)reliability);
-
-                        if (reliability == Reliability.UnreliableSequenced)
-                            writer.Write((uint)_sendSeqNum++);
-
-                        writer.Write(data);
-
-                        await _udpClient.SendAsync(stream.ToArray(), len, endPoint).ConfigureAwait(false);
-                    }
-                    break;
-
-                default:
-                    if (!_tcpConnections.TryGetValue(endPoint, out var conn))
-                        throw new InvalidOperationException("Client is not connected!!");
-
-                    conn.Connection.Send(data);
-
-                    break;
-            }
-        }
-
-        public async Task CloseAsync(IPEndPoint endPoint)
-        {
-            if (!_tcpConnections.TryGetValue(endPoint, out var conn))
-                throw new InvalidOperationException("Client is not connected!!");
-
-            await conn.Connection.CloseAsync();
-        }
-
-        public IRakConnection GetConnection(IPEndPoint endPoint)
-            => _tcpConnections.TryGetValue(endPoint, out var entry) ? entry.Connection : null;
     }
 }
