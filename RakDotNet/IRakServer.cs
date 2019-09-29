@@ -11,7 +11,7 @@ namespace RakDotNet
         event Func<IPEndPoint, Task> ClientConnected;
         event Func<IPEndPoint, CloseReason, Task> ClientDisconnected;
 
-        Task RunAsync(CancellationToken cancelToken = default);
+        Task RunAsync();
 
         Task ShutdownAsync();
 

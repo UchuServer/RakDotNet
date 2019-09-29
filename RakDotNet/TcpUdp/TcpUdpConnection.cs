@@ -14,7 +14,8 @@ namespace RakDotNet.TcpUdp
 {
     public class TcpUdpConnection : IRakConnection
     {
-        public const int PING_INTERVAL = 5000;
+        public const int PingInterval = 5000;
+
         private readonly X509Certificate _cert;
 
         private readonly TcpClient _tcp;
@@ -50,7 +51,7 @@ namespace RakDotNet.TcpUdp
             _pingCount = 0;
             _cumulativePing = 0;
 
-            _timer = new Timer(PING_INTERVAL)
+            _timer = new Timer(PingInterval)
             {
                 AutoReset = true
             };
@@ -69,6 +70,8 @@ namespace RakDotNet.TcpUdp
             if (!_tcp.Connected)
                 throw new InvalidOperationException("Connection is closed!");
 
+            _timer.Stop();
+            _tcpCts.Cancel();
             _tcp.Close();
 
             await DisconnectInternalAsync(CloseReason.ForceDisconnect);
@@ -84,19 +87,13 @@ namespace RakDotNet.TcpUdp
         }
 
         public void Send(Span<byte> buf)
-        {
-            Send((ReadOnlySpan<byte>) buf);
-        }
+            => Send((ReadOnlySpan<byte>) buf);
 
         public void Send(byte[] buf, int index, int length)
-        {
-            Send(new ReadOnlySpan<byte>(buf, index, length));
-        }
+            => Send(new ReadOnlySpan<byte>(buf, index, length));
 
         public override string ToString()
-        {
-            return EndPoint.ToString();
-        }
+            => EndPoint.ToString();
 
         public override bool Equals(object obj)
         {
@@ -112,14 +109,10 @@ namespace RakDotNet.TcpUdp
         }
 
         protected bool Equals(TcpUdpConnection other)
-        {
-            return other.EndPoint.Equals(EndPoint);
-        }
+            => other.EndPoint.Equals(EndPoint);
 
         public override int GetHashCode()
-        {
-            return EndPoint.GetHashCode();
-        }
+            => EndPoint.GetHashCode();
 
         internal async Task RunAsync()
         {
@@ -155,6 +148,8 @@ namespace RakDotNet.TcpUdp
                 {
                     cancelToken.ThrowIfCancellationRequested();
 
+                    await Task.Delay(TcpUdpServer.LoopDelay);
+
                     _pingTimer += 20;
 
                     await ReceiveTcpAsync(_tcpStream, cancelToken).ConfigureAwait(false);
@@ -170,6 +165,8 @@ namespace RakDotNet.TcpUdp
             {
                 do
                 {
+                    await Task.Delay(TcpUdpServer.LoopDelay);
+
                     if (_curPacketLength == 0 && _tcp.Available >= 4)
                     {
                         var packetLenBuffer = new byte[4];
