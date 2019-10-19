@@ -79,10 +79,18 @@ namespace RakDotNet.TcpUdp
 
         public void Send(ReadOnlySpan<byte> buf)
         {
-            using (var writer = new BinaryWriter(_tcpStream, Encoding.UTF8, true))
+            try
             {
-                writer.Write(buf.Length);
-                writer.Write(buf);
+                using (var writer = new BinaryWriter(_tcpStream, Encoding.UTF8, true))
+                {
+                    writer.Write(buf.Length);
+                    writer.Write(buf);
+                }
+            }
+            catch
+            {
+                if (_tcp.Connected)
+                    Task.Run(async () => await DisconnectInternalAsync(CloseReason.ClientDisconnect));
             }
         }
 
