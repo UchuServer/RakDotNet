@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
@@ -26,7 +27,6 @@ namespace RakDotNet.TcpUdp
 
         private readonly CancellationTokenSource _runCts;
 
-        private uint _recvSeqNum;
         private uint _sendSeqNum;
 
         private Task _tcpAcceptTask;
@@ -53,7 +53,6 @@ namespace RakDotNet.TcpUdp
             _tcpStarted = false;
 
             _sendSeqNum = 0;
-            _recvSeqNum = 0;
         }
 
         public event Func<IPEndPoint, byte[], Reliability, Task> MessageReceived;
@@ -151,7 +150,7 @@ namespace RakDotNet.TcpUdp
                 {
                     cancelToken.ThrowIfCancellationRequested();
 
-                    await Task.Delay(LoopDelay);
+                    await Task.Delay(LoopDelay, cancelToken);
 
                     var client = await _tcpServer.AcceptTcpClientAsync().ConfigureAwait(false);
 
@@ -224,14 +223,6 @@ namespace RakDotNet.TcpUdp
                 if (reliability == Reliability.UnreliableSequenced)
                 {
                     offset += 4;
-
-                    var seqNumBuf = new ArraySegment<byte>(recv.Buffer, 1, 4);
-                    var seqNum = BitConverter.ToUInt32(seqNumBuf);
-
-                    if (seqNum < _recvSeqNum)
-                        return;
-
-                    _recvSeqNum = seqNum;
                 }
 
                 var data = new byte[recv.Buffer.Length - offset];
@@ -267,7 +258,8 @@ namespace RakDotNet.TcpUdp
 
                 case MessageIdentifier.UserPacketEnum:
                     if (MessageReceived != null)
-                        await MessageReceived(endPoint, data, reliability).ConfigureAwait(false);
+                        await MessageReceived(endPoint, data, reliability);
+
                     break;
             }
         }
