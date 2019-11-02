@@ -34,8 +34,12 @@ namespace RakDotNet.TcpUdp
 
         private readonly Timer _timer;
 
+        private readonly object _sendLock;
+
         internal TcpUdpConnection(TcpClient tcp, X509Certificate certificate = null)
         {
+            _sendLock = new object();
+            
             _tcp = tcp;
             _cert = certificate;
             _tcpReceiveLock = new SemaphoreSlim(1, 1);
@@ -79,18 +83,21 @@ namespace RakDotNet.TcpUdp
 
         public void Send(ReadOnlySpan<byte> buf)
         {
-            try
+            lock (_sendLock)
             {
-                using (var writer = new BinaryWriter(_tcpStream, Encoding.UTF8, true))
+                try
                 {
-                    writer.Write(buf.Length);
-                    writer.Write(buf);
+                    using (var writer = new BinaryWriter(_tcpStream, Encoding.UTF8, true))
+                    {
+                        writer.Write(buf.Length);
+                        writer.Write(buf);
+                    }
                 }
-            }
-            catch
-            {
-                if (_tcp.Connected)
-                    Task.Run(async () => await DisconnectInternalAsync(CloseReason.ClientDisconnect));
+                catch
+                {
+                    if (_tcp.Connected)
+                        Task.Run(async () => await DisconnectInternalAsync(CloseReason.ClientDisconnect));
+                }
             }
         }
 
