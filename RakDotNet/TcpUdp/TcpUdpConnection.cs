@@ -85,18 +85,10 @@ namespace RakDotNet.TcpUdp
         {
             lock (_sendLock)
             {
-                try
+                using (var writer = new BinaryWriter(_tcpStream, Encoding.UTF8, true))
                 {
-                    using (var writer = new BinaryWriter(_tcpStream, Encoding.UTF8, true))
-                    {
-                        writer.Write(buf.Length);
-                        writer.Write(buf);
-                    }
-                }
-                catch
-                {
-                    if (_tcp.Connected)
-                        Task.Run(async () => await DisconnectInternalAsync(CloseReason.ClientDisconnect));
+                    writer.Write(buf.Length);
+                    writer.Write(buf);
                 }
             }
         }
