@@ -85,11 +85,9 @@ namespace RakDotNet.TcpUdp
         {
             lock (_sendLock)
             {
-                using (var writer = new BinaryWriter(_tcpStream, Encoding.UTF8, true))
-                {
-                    writer.Write(buf.Length);
-                    writer.Write(buf);
-                }
+                using var writer = new BinaryWriter(_tcpStream, Encoding.UTF8, true);
+                writer.Write(buf.Length);
+                writer.Write(buf);
             }
         }
 
@@ -172,7 +170,7 @@ namespace RakDotNet.TcpUdp
             {
                 do
                 {
-                    await Task.Delay(TcpUdpServer.LoopDelay);
+                    await Task.Delay(TcpUdpServer.LoopDelay, cancelToken);
 
                     if (_curPacketLength == 0 && _tcp.Available >= 4)
                     {
@@ -220,42 +218,39 @@ namespace RakDotNet.TcpUdp
         {
             var curr = _pingTimer;
 
-            using (var stream = new MemoryStream(data))
-            using (var reader = new BinaryReader(stream))
-            {
-                reader.ReadByte();
+            using var stream = new MemoryStream(data);
+            using var reader = new BinaryReader(stream);
+            
+            reader.ReadByte();
 
-                var old = reader.ReadUInt32();
+            var old = reader.ReadUInt32();
 
-                _lastPing = (int) (curr - old);
-                _cumulativePing += _lastPing;
-                _pingCount++;
-            }
+            _lastPing = (int) (curr - old);
+            _cumulativePing += _lastPing;
+            _pingCount++;
         }
 
         private void DoPong(byte[] data)
         {
-            using (var stream = new MemoryStream(1 + 4 + 4))
-            using (var writer = new BinaryWriter(stream))
-            {
-                writer.Write((byte) MessageIdentifier.ConnectedPong);
-                writer.Write(new ArraySegment<byte>(data, 1, 4));
-                writer.Write(0u);
+            using var stream = new MemoryStream(1 + 4 + 4);
+            using var writer = new BinaryWriter(stream);
+            
+            writer.Write((byte) MessageIdentifier.ConnectedPong);
+            writer.Write(new ArraySegment<byte>(data, 1, 4));
+            writer.Write(0u);
 
-                Send(stream.ToArray());
-            }
+            Send(stream.ToArray());
         }
 
         private void DoPing()
         {
-            using (var stream = new MemoryStream(1 + 4))
-            using (var writer = new BinaryWriter(stream))
-            {
-                writer.Write((byte) MessageIdentifier.InternalPing);
-                writer.Write((uint) _pingTimer);
+            using var stream = new MemoryStream(1 + 4);
+            using var writer = new BinaryWriter(stream);
+            
+            writer.Write((byte) MessageIdentifier.InternalPing);
+            writer.Write((uint) _pingTimer);
 
-                Send(stream.ToArray());
-            }
+            Send(stream.ToArray());
         }
 
         private void PingTimerElapsed(object sender, ElapsedEventArgs args)

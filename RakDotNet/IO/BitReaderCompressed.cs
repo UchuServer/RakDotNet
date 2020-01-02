@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 
 namespace RakDotNet.IO
 {
-    public static class BitReader_Compressed
+    public static class BitReaderCompressed
     {
         public static int ReadCompressed(this BitReader @this, Span<byte> buf, int bits, bool unsigned)
         {

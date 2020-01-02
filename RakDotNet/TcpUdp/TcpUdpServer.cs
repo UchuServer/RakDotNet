@@ -100,9 +100,10 @@ namespace RakDotNet.TcpUdp
                     if (reliability == Reliability.UnreliableSequenced)
                         len += 4;
 
-                    using (var stream = new MemoryStream(len))
-                    using (var writer = new BinaryWriter(stream))
+                    await using (var stream = new MemoryStream(len))
                     {
+                        await using var writer = new BinaryWriter(stream);
+                        
                         writer.Write((byte) reliability);
 
                         if (reliability == Reliability.UnreliableSequenced)
@@ -201,7 +202,7 @@ namespace RakDotNet.TcpUdp
                 {
                     cancelToken.ThrowIfCancellationRequested();
 
-                    await Task.Delay(LoopDelay);
+                    await Task.Delay(LoopDelay, cancelToken);
 
                     await ReceiveUdpAsync(cancelToken).ConfigureAwait(false);
                 }
@@ -271,23 +272,22 @@ namespace RakDotNet.TcpUdp
             if (!password.SequenceEqual(_password))
                 await CloseAsync(endPoint).ConfigureAwait(false);
 
-            using (var stream = new MemoryStream(1 + 4 + 2 + 2 + 4 + 2))
-            using (var writer = new BinaryWriter(stream))
-            {
-                writer.Write((byte) MessageIdentifier.ConnectionRequestAccepted);
+            await using var stream = new MemoryStream(1 + 4 + 2 + 2 + 4 + 2);
+            await using var writer = new BinaryWriter(stream);
+            
+            writer.Write((byte) MessageIdentifier.ConnectionRequestAccepted);
 
-                writer.Write(endPoint.Address.GetAddressBytes());
-                writer.Write((ushort) endPoint.Port);
+            writer.Write(endPoint.Address.GetAddressBytes());
+            writer.Write((ushort) endPoint.Port);
 
-                writer.Write(new byte[2]);
+            writer.Write(new byte[2]);
 
-                var local = _tcpServer.GetLocalEndPoint();
+            var local = _tcpServer.GetLocalEndPoint();
 
-                writer.Write(local.Address.GetAddressBytes());
-                writer.Write((ushort) local.Port);
+            writer.Write(local.Address.GetAddressBytes());
+            writer.Write((ushort) local.Port);
 
-                await SendAsync(endPoint, stream.ToArray()).ConfigureAwait(false);
-            }
+            await SendAsync(endPoint, stream.ToArray()).ConfigureAwait(false);
         }
     }
 }
