@@ -4,7 +4,6 @@ using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Cryptography.X509Certificates;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
@@ -14,8 +13,6 @@ namespace RakDotNet.TcpUdp
 {
     public class TcpUdpConnection : IRakConnection
     {
-        public const int PingInterval = 5000;
-
         private readonly X509Certificate _cert;
 
         private readonly TcpClient _tcp;
@@ -36,17 +33,18 @@ namespace RakDotNet.TcpUdp
 
         private readonly object _sendLock;
 
-        internal TcpUdpConnection(TcpClient tcp, X509Certificate certificate = null)
+        internal TcpUdpConnection(TcpClient tcp, X509Certificate certificate = null, int pingInterval = 5000)
         {
             _sendLock = new object();
             
             _tcp = tcp;
+
             _cert = certificate;
             _tcpReceiveLock = new SemaphoreSlim(1, 1);
             _tcpCts = new CancellationTokenSource();
 
             _tcpStream = _tcp.GetStream();
-
+            
             _curPacketLength = 0;
             _sslAuthenticated = false;
 
@@ -55,7 +53,7 @@ namespace RakDotNet.TcpUdp
             _pingCount = 0;
             _cumulativePing = 0;
 
-            _timer = new Timer(PingInterval)
+            _timer = new Timer(pingInterval)
             {
                 AutoReset = true
             };
@@ -74,6 +72,7 @@ namespace RakDotNet.TcpUdp
             if (!_tcp.Connected)
                 throw new InvalidOperationException("Connection is closed!");
 
+            await _tcpStream.DisposeAsync();
             _timer.Stop();
             _tcpCts.Cancel();
             _tcp.Close();
@@ -85,9 +84,8 @@ namespace RakDotNet.TcpUdp
         {
             lock (_sendLock)
             {
-                using var writer = new BinaryWriter(_tcpStream, Encoding.UTF8, true);
-                writer.Write(buf.Length);
-                writer.Write(buf);
+                _tcpStream.Write(BitConverter.GetBytes((uint) buf.Length));
+                _tcpStream.Write(buf);
             }
         }
 
@@ -153,16 +151,16 @@ namespace RakDotNet.TcpUdp
                 {
                     cancelToken.ThrowIfCancellationRequested();
 
-                    await Task.Delay(TcpUdpServer.LoopDelay);
+                    await Task.Delay(TcpUdpServer.LoopDelay, cancelToken);
 
                     _pingTimer += 20;
 
-                    await ReceiveTcpAsync(_tcpStream, cancelToken).ConfigureAwait(false);
+                    await ReceiveTcpAsync(cancelToken).ConfigureAwait(false);
                 }
             }, cancelToken);
         }
 
-        private async Task ReceiveTcpAsync(Stream stream, CancellationToken cancelToken)
+        private async Task ReceiveTcpAsync(CancellationToken cancelToken)
         {
             await _tcpReceiveLock.WaitAsync(cancelToken).ConfigureAwait(false);
 
@@ -176,7 +174,7 @@ namespace RakDotNet.TcpUdp
                     {
                         var packetLenBuffer = new byte[4];
 
-                        await stream.ReadAsync(packetLenBuffer, cancelToken).ConfigureAwait(false);
+                        await _tcpStream.ReadAsync(packetLenBuffer, cancelToken).ConfigureAwait(false);
 
                         _curPacketLength = BitConverter.ToUInt32(packetLenBuffer);
                     }
@@ -184,7 +182,7 @@ namespace RakDotNet.TcpUdp
 
                 var packetBuffer = new byte[_curPacketLength];
 
-                await stream.ReadAsync(packetBuffer, cancelToken).ConfigureAwait(false);
+                await _tcpStream.ReadAsync(packetBuffer, cancelToken).ConfigureAwait(false);
 
                 _curPacketLength = 0;
 

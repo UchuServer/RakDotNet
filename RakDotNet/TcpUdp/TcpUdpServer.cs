@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using System.Runtime.CompilerServices;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,6 +15,8 @@ namespace RakDotNet.TcpUdp
         public const int LoopDelay = 50;
 
         private readonly X509Certificate _cert;
+
+        private readonly int _pingInterval;
 
         private readonly byte[] _password;
         private readonly ConcurrentDictionary<IPEndPoint, ConnectionEntry> _tcpConnections;
@@ -34,9 +35,10 @@ namespace RakDotNet.TcpUdp
 
         private bool _tcpStarted;
 
-        public TcpUdpServer(int port, string password, X509Certificate cert = null)
+        public TcpUdpServer(int port, string password, X509Certificate cert = null, int pingInterval = 5000)
         {
             _cert = cert;
+            _pingInterval = pingInterval;
 
             _udpClient = new UdpClient(port);
             _udpReceiveLock = new SemaphoreSlim(1, 1);
@@ -164,7 +166,7 @@ namespace RakDotNet.TcpUdp
                         await _tcpConnections[remoteEndpoint].Connection.CloseAsync();
                     }
 
-                    var conn = new TcpUdpConnection(client, _cert);
+                    var conn = new TcpUdpConnection(client, _cert, _pingInterval);
 
                     _tcpConnections[remoteEndpoint] = new ConnectionEntry
                     {
