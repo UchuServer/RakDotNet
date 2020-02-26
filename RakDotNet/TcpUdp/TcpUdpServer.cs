@@ -83,11 +83,7 @@ namespace RakDotNet.TcpUdp
             _tcpServer.Stop();
             _udpClient.Close();
 
-            await Task.WhenAll(new[]
-            {
-                _tcpAcceptTask,
-                _udpRecvTask
-            });
+            await Task.WhenAll(_tcpAcceptTask, _udpRecvTask);
         }
         
         public async Task SendAsync(IPEndPoint endPoint, byte[] data,

@@ -186,7 +186,7 @@ namespace RakDotNet.TcpUdp
 
                 _curPacketLength = 0;
 
-                OnPacket(packetBuffer);
+                var _ = Task.Run(() => OnPacket(packetBuffer), cancelToken);
             }
             finally
             {
