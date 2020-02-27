@@ -28,6 +28,8 @@ namespace RakDotNet.TcpUdp
 
         private readonly CancellationTokenSource _runCts;
 
+        private CancellationTokenSource _runUdp;
+
         private uint _sendSeqNum;
 
         private Task _tcpAcceptTask;
@@ -65,8 +67,7 @@ namespace RakDotNet.TcpUdp
         {
             var tasks = new[]
             {
-                _tcpAcceptTask = RunTcpAcceptLoopAsync(_runCts.Token),
-                _udpRecvTask = RunReceiveUdpAsync(_runCts.Token)
+                _tcpAcceptTask = RunTcpAcceptLoopAsync(_runCts.Token)
             };
 
             return Task.WhenAny(tasks);
@@ -80,10 +81,11 @@ namespace RakDotNet.TcpUdp
             }
 
             _runCts.Cancel();
+            _runUdp.Cancel();
             _tcpServer.Stop();
             _udpClient.Close();
 
-            await Task.WhenAll(_tcpAcceptTask, _udpRecvTask);
+            await Task.WhenAll(_tcpAcceptTask, _udpRecvTask ?? Task.CompletedTask);
         }
         
         public async Task SendAsync(IPEndPoint endPoint, byte[] data,
@@ -153,6 +155,13 @@ namespace RakDotNet.TcpUdp
 
                     var client = await _tcpServer.AcceptTcpClientAsync().ConfigureAwait(false);
 
+                    if (_udpRecvTask == default)
+                    {
+                        _runUdp = new CancellationTokenSource();
+                        
+                        _udpRecvTask = RunReceiveUdpAsync(_runUdp.Token);
+                    }
+
                     var remoteEndpoint = client.GetRemoteEndPoint();
                     
                     if (_tcpConnections.ContainsKey(remoteEndpoint))
@@ -182,6 +191,13 @@ namespace RakDotNet.TcpUdp
                             return;
 
                         _tcpConnections.TryRemove(remoteEndpoint, out _);
+
+                        if (_tcpConnections.IsEmpty)
+                        {
+                            _runUdp.Cancel();
+
+                            _udpRecvTask = default;
+                        }
 
                         if (ClientDisconnected != null)
                             await ClientDisconnected(remoteEndpoint, reason).ConfigureAwait(false);
