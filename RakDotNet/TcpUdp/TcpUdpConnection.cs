@@ -151,8 +151,6 @@ namespace RakDotNet.TcpUdp
                 {
                     cancelToken.ThrowIfCancellationRequested();
 
-                    await Task.Delay(10, cancelToken);
-
                     _pingTimer += 20;
 
                     await ReceiveTcpAsync(cancelToken).ConfigureAwait(false);
@@ -166,24 +164,13 @@ namespace RakDotNet.TcpUdp
 
             try
             {
-                do
-                {
-                    cancelToken.ThrowIfCancellationRequested();
+                var packetLenBuffer = new byte[4];
 
-                    if (_curPacketLength != 0 || _tcp.Available < 4) continue;
-                    
-                    var packetLenBuffer = new byte[4];
+                await _tcpStream.ReadAsync(packetLenBuffer, cancelToken).ConfigureAwait(false);
 
-                    await _tcpStream.ReadAsync(packetLenBuffer, cancelToken).ConfigureAwait(false);
-
-                    _curPacketLength = BitConverter.ToUInt32(packetLenBuffer);
-                } while (_curPacketLength == 0 || _curPacketLength > _tcp.Available);
-
-                var packetBuffer = new byte[_curPacketLength];
+                var packetBuffer = new byte[BitConverter.ToInt32(packetLenBuffer)];
 
                 await _tcpStream.ReadAsync(packetBuffer, cancelToken).ConfigureAwait(false);
-
-                _curPacketLength = 0;
 
                 var _ = Task.Run(() => OnPacket(packetBuffer), cancelToken);
             }

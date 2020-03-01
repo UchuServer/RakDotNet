@@ -12,8 +12,6 @@ namespace RakDotNet.TcpUdp
 {
     public class TcpUdpServer : IRakServer
     {
-        public const int LoopDelay = 50;
-
         private readonly X509Certificate _cert;
 
         private readonly int _pingInterval;
@@ -151,8 +149,6 @@ namespace RakDotNet.TcpUdp
                 {
                     cancelToken.ThrowIfCancellationRequested();
 
-                    await Task.Delay(LoopDelay, cancelToken);
-
                     var client = await _tcpServer.AcceptTcpClientAsync().ConfigureAwait(false);
 
                     if (_udpRecvTask == default)
@@ -215,8 +211,6 @@ namespace RakDotNet.TcpUdp
                 while (true)
                 {
                     cancelToken.ThrowIfCancellationRequested();
-
-                    await Task.Delay(LoopDelay, cancelToken);
 
                     await ReceiveUdpAsync(cancelToken).ConfigureAwait(false);
                 }
