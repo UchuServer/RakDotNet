@@ -20,7 +20,6 @@ namespace RakDotNet.TcpUdp
         private readonly SemaphoreSlim _tcpReceiveLock;
         private int _cumulativePing;
 
-        private uint _curPacketLength;
         private int _lastPing;
         private int _pingCount;
 
@@ -45,7 +44,6 @@ namespace RakDotNet.TcpUdp
 
             _tcpStream = _tcp.GetStream();
             
-            _curPacketLength = 0;
             _sslAuthenticated = false;
 
             _pingTimer = 0;
@@ -151,33 +149,28 @@ namespace RakDotNet.TcpUdp
                 {
                     cancelToken.ThrowIfCancellationRequested();
 
-                    _pingTimer += 20;
+                    _pingTimer += TcpUdpServer.LoopDelay;
+                    
+                    await _tcpReceiveLock.WaitAsync(cancelToken).ConfigureAwait(false);
+                    
+                    try
+                    {
+                        var packetLenBuffer = new byte[4];
 
-                    await ReceiveTcpAsync(cancelToken).ConfigureAwait(false);
+                        await _tcpStream.ReadAsync(packetLenBuffer, cancelToken).ConfigureAwait(false);
+
+                        var packetBuffer = new byte[BitConverter.ToInt32(packetLenBuffer)];
+
+                        await _tcpStream.ReadAsync(packetBuffer, cancelToken).ConfigureAwait(false);
+
+                        var _ = Task.Run(() => OnPacket(packetBuffer), cancelToken);
+                    }
+                    finally
+                    {
+                        _tcpReceiveLock.Release();
+                    }
                 }
             }, cancelToken);
-        }
-
-        private async Task ReceiveTcpAsync(CancellationToken cancelToken)
-        {
-            await _tcpReceiveLock.WaitAsync(cancelToken).ConfigureAwait(false);
-
-            try
-            {
-                var packetLenBuffer = new byte[4];
-
-                await _tcpStream.ReadAsync(packetLenBuffer, cancelToken).ConfigureAwait(false);
-
-                var packetBuffer = new byte[BitConverter.ToInt32(packetLenBuffer)];
-
-                await _tcpStream.ReadAsync(packetBuffer, cancelToken).ConfigureAwait(false);
-
-                var _ = Task.Run(() => OnPacket(packetBuffer), cancelToken);
-            }
-            finally
-            {
-                _tcpReceiveLock.Release();
-            }
         }
 
         private void OnPacket(byte[] buf)

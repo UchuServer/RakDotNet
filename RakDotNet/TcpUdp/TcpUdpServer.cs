@@ -12,6 +12,8 @@ namespace RakDotNet.TcpUdp
 {
     public class TcpUdpServer : IRakServer
     {
+        public const int LoopDelay = 50;
+        
         private readonly X509Certificate _cert;
 
         private readonly int _pingInterval;
