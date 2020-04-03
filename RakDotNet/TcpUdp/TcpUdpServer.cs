@@ -80,10 +80,10 @@ namespace RakDotNet.TcpUdp
                 await CloseAsync(connection.Key);
             }
 
-            _runCts.Cancel();
-            _runUdp.Cancel();
-            _tcpServer.Stop();
-            _udpClient.Close();
+            _runCts?.Cancel();
+            _runUdp?.Cancel();
+            _tcpServer?.Stop();
+            _udpClient?.Close();
 
             await Task.WhenAll(_tcpAcceptTask, _udpRecvTask ?? Task.CompletedTask);
         }
