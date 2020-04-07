@@ -146,7 +146,7 @@ namespace RakDotNet.TcpUdp
 
                 _tcpServer.Start();
                 _tcpStarted = true;
-
+                
                 while (true)
                 {
                     cancelToken.ThrowIfCancellationRequested();
