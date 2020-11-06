@@ -88,7 +88,7 @@ namespace RakDotNet.TcpUdp
                     _tcpStream.Write(buf);
                 }
             }
-            catch (SocketException)
+            catch (IOException)
             {
                 // If the connection is broken, close it
                 Task.Run(async () =>
