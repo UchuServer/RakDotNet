@@ -80,10 +80,21 @@ namespace RakDotNet.TcpUdp
 
         public void Send(ReadOnlySpan<byte> buf)
         {
-            lock (_sendLock)
+            try
             {
-                _tcpStream.Write(BitConverter.GetBytes((uint) buf.Length));
-                _tcpStream.Write(buf);
+                lock (_sendLock)
+                {
+                    _tcpStream.Write(BitConverter.GetBytes((uint) buf.Length));
+                    _tcpStream.Write(buf);
+                }
+            }
+            catch (SocketException)
+            {
+                // If the connection is broken, close it
+                Task.Run(async () =>
+                {
+                    await CloseAsync();
+                });
             }
         }
 
