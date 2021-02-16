@@ -157,7 +157,12 @@ namespace RakDotNet.TcpUdp
                     {
                         var packetLenBuffer = new byte[4];
 
-                        await _tcpStream.ReadAsync(packetLenBuffer, cancelToken).ConfigureAwait(false);
+                        var bytesRead = await _tcpStream.ReadAsync(packetLenBuffer, cancelToken).ConfigureAwait(false);
+                        if (bytesRead == 0)
+                        {
+                            await CloseAsync();
+                            break;
+                        }
 
                         var packetBuffer = new byte[BitConverter.ToInt32(packetLenBuffer)];
 
