@@ -13,7 +13,7 @@ namespace RakDotNet.TcpUdp
     public class TcpUdpServer : IRakServer
     {
         public const int LoopDelay = 50;
-
+        
         private readonly X509Certificate _cert;
 
         private readonly int _pingInterval;
@@ -28,12 +28,14 @@ namespace RakDotNet.TcpUdp
 
         private readonly CancellationTokenSource _runCts;
 
+        private CancellationTokenSource _runUdp;
+
         private uint _sendSeqNum;
 
         private Task _tcpAcceptTask;
         private Task _udpRecvTask;
 
-        private bool _tcpStarted;
+        public bool TcpStarted { get; set; }
 
         public TcpUdpServer(int port, string password, X509Certificate cert = null, int pingInterval = 5000)
         {
@@ -52,7 +54,7 @@ namespace RakDotNet.TcpUdp
 
             for (var i = 0; i < password.Length; i++) _password[i] = (byte) password[i];
 
-            _tcpStarted = false;
+            TcpStarted = false;
 
             _sendSeqNum = 0;
         }
@@ -65,8 +67,7 @@ namespace RakDotNet.TcpUdp
         {
             var tasks = new[]
             {
-                _tcpAcceptTask = RunTcpAcceptLoopAsync(_runCts.Token),
-                _udpRecvTask = RunReceiveUdpAsync(_runCts.Token)
+                _tcpAcceptTask = RunTcpAcceptLoopAsync(_runCts.Token)
             };
 
             return Task.WhenAny(tasks);
@@ -79,11 +80,12 @@ namespace RakDotNet.TcpUdp
                 await CloseAsync(connection.Key);
             }
 
-            _runCts.Cancel();
-            _tcpServer.Stop();
-            _udpClient.Close();
+            _runCts?.Cancel();
+            _runUdp?.Cancel();
+            _tcpServer?.Stop();
+            _udpClient?.Close();
 
-            await Task.WhenAll(_tcpAcceptTask, _udpRecvTask);
+            await Task.WhenAll(_tcpAcceptTask, _udpRecvTask ?? Task.CompletedTask);
         }
         
         public async Task SendAsync(IPEndPoint endPoint, byte[] data,
@@ -139,19 +141,25 @@ namespace RakDotNet.TcpUdp
         {
             return Task.Run(async () =>
             {
-                if (_tcpStarted)
+                if (TcpStarted)
                     _tcpServer.Stop();
 
                 _tcpServer.Start();
-                _tcpStarted = true;
+
+                TcpStarted = true;
 
                 while (true)
                 {
                     cancelToken.ThrowIfCancellationRequested();
 
-                    await Task.Delay(LoopDelay, cancelToken);
-
                     var client = await _tcpServer.AcceptTcpClientAsync().ConfigureAwait(false);
+
+                    if (_udpRecvTask == default)
+                    {
+                        _runUdp = new CancellationTokenSource();
+                        
+                        _udpRecvTask = RunReceiveUdpAsync(_runUdp.Token);
+                    }
 
                     var remoteEndpoint = client.GetRemoteEndPoint();
                     
@@ -183,6 +191,13 @@ namespace RakDotNet.TcpUdp
 
                         _tcpConnections.TryRemove(remoteEndpoint, out _);
 
+                        if (_tcpConnections.IsEmpty)
+                        {
+                            _runUdp.Cancel();
+
+                            _udpRecvTask = default;
+                        }
+
                         if (ClientDisconnected != null)
                             await ClientDisconnected(remoteEndpoint, reason).ConfigureAwait(false);
                     };
@@ -199,8 +214,6 @@ namespace RakDotNet.TcpUdp
                 while (true)
                 {
                     cancelToken.ThrowIfCancellationRequested();
-
-                    await Task.Delay(LoopDelay, cancelToken);
 
                     await ReceiveUdpAsync(cancelToken).ConfigureAwait(false);
                 }
