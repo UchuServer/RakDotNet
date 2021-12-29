@@ -51,6 +51,7 @@ namespace RakDotNet.IO
 
             Marshal.StructureToPtr(val, ptr, false);
             Marshal.Copy(ptr, buf, 0, size);
+            Marshal.FreeHGlobal(ptr);
 
             return @this.WriteCompressed(new ReadOnlySpan<byte>(buf), bits, unsigned);
         }
